@@ -41,7 +41,7 @@ Action type rules:
 - "navigate": set url to a full URL
 - "back": go back in browser history
 - "press_enter": submit a form or confirm a selection
-- "done": task completed — set reason explaining what you accomplished
+- "done": task completed — set reason to a thorough summary: what the site does, key pages visited, main features found, value proposition, and any UX issues noticed
 - "give_up": cannot complete — set reason explaining exactly where you got stuck
 
 confusion_score: integer 0-10 (0 = no confusion, 10 = completely stuck)
@@ -161,6 +161,26 @@ async def run_persona_session(
                     f"without navigating away. You MUST click a link or button that takes you to "
                     f"a NEW page this step. Do NOT scroll or describe the page again. "
                     f"Pages visited so far: {', '.join(visited[-5:])}"
+                )
+
+            # Step-budget pacing nudges
+            steps_left = MAX_STEPS - step
+            if steps_left <= 3:
+                loop_nudge += (
+                    f"\n\nFINAL STEPS: You have only {steps_left} step(s) left. "
+                    f"You MUST call 'done' RIGHT NOW. Summarise everything you found across all pages visited."
+                )
+            elif steps_left <= 8:
+                loop_nudge += (
+                    f"\n\nWRAPPING UP: Only {steps_left} steps remaining. Stop exploring new pages. "
+                    f"Call 'done' with a thorough summary of the site — value proposition, key features, "
+                    f"navigation structure, and any UX issues you noticed."
+                )
+            elif steps_left <= 15:
+                loop_nudge += (
+                    f"\n\nPACING: {steps_left} steps left. You should be finishing up your exploration. "
+                    f"If you haven't yet visited pricing, about, or key feature pages, do so now, "
+                    f"then prepare to call 'done'."
                 )
 
             # Current step user content — screenshot + text
