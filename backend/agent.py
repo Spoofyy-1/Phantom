@@ -15,7 +15,7 @@ from openai import AsyncOpenAI
 from browser import BrowserSession
 from personas import ARCHETYPE_MAP
 
-MAX_STEPS = 50
+MAX_STEPS = 25
 
 ACTION_SCHEMA = """
 Respond with ONLY a JSON object — no markdown, no explanation:
@@ -170,18 +170,6 @@ async def run_persona_session(
                 loop_nudge += (
                     f"\n\nFINAL STEPS: You have only {steps_left} step(s) left. "
                     f"You MUST call 'done' RIGHT NOW. Summarise everything you found across all pages visited."
-                )
-            elif steps_left <= 8:
-                loop_nudge += (
-                    f"\n\nWRAPPING UP: Only {steps_left} steps remaining. Stop exploring new pages. "
-                    f"Call 'done' with a thorough summary of the site — value proposition, key features, "
-                    f"navigation structure, and any UX issues you noticed."
-                )
-            elif steps_left <= 15:
-                loop_nudge += (
-                    f"\n\nPACING: {steps_left} steps left. You should be finishing up your exploration. "
-                    f"If you haven't yet visited pricing, about, or key feature pages, do so now, "
-                    f"then prepare to call 'done'."
                 )
 
             # Current step user content — screenshot + text
@@ -433,16 +421,16 @@ async def run_test(
 ) -> dict:
     await on_event({"type": "test_start", "test_id": test_id, "url": url, "task": task})
 
-    persona_results = []
-    for p in personas:
-        result = await run_persona_session(
+    persona_results = await asyncio.gather(*[
+        run_persona_session(
             persona_id=p.get("id", ""),
             custom_persona=p.get("custom_persona"),
             url=url,
             task=task,
             on_event=on_event,
         )
-        persona_results.append(result)
+        for p in personas
+    ])
 
     total_personas = len(persona_results)
     succeeded = sum(1 for r in persona_results if r["success"])
