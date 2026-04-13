@@ -2,14 +2,14 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, Globe, Loader2, ChevronDown } from 'lucide-react'
+import { ArrowRight, Globe, Loader2, Zap } from 'lucide-react'
 import { fetchArchetypes, startTest } from '@/lib/api'
 import { PersonaCard } from '@/components/PersonaCard'
 import { CustomPersonaBuilder } from '@/components/CustomPersonaBuilder'
 import type { Archetype, PersonaRef } from '@/types'
 
 const PRESET_TASKS = [
-  { label: 'Explore the site', value: 'Explore this website. Understand what it offers and try to find the main features.' },
+  { label: 'Explore the site', value: 'Explore this website. Understand what it offers and find the main features.' },
   { label: 'Sign up', value: 'Try to create a new account or sign up for this service.' },
   { label: 'Find pricing', value: 'Find out how much this service costs and what plans are available.' },
   { label: 'Contact support', value: 'Try to contact support or find help documentation.' },
@@ -31,18 +31,14 @@ export default function Home() {
   useEffect(() => {
     fetchArchetypes()
       .then(setArchetypes)
-      .catch(() => setError('Failed to load personas — is the backend running?'))
+      .catch(() => setError('Backend offline — set NEXT_PUBLIC_API_URL and redeploy.'))
   }, [])
 
   const togglePersona = useCallback((id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev)
-      if (next.has(id)) {
-        next.delete(id)
-      } else {
-        if (next.size >= 4) return prev // max 4
-        next.add(id)
-      }
+      if (next.has(id)) { next.delete(id) }
+      else if (next.size < 4) { next.add(id) }
       return next
     })
   }, [])
@@ -51,7 +47,7 @@ export default function Home() {
     setCustomPersonas((prev) => [...prev, p])
     setSelectedIds((prev) => {
       const next = new Set(prev)
-      next.add(p.id)
+      if (next.size < 4) next.add(p.id)
       return next
     })
   }
@@ -59,16 +55,13 @@ export default function Home() {
   const handleRun = async () => {
     const finalTask = customTaskMode ? customTask : task
     if (!url.trim() || selectedIds.size === 0 || !finalTask.trim()) return
-
     setLoading(true)
     setError(null)
-
     try {
       const allPersonas: PersonaRef[] = Array.from(selectedIds).map((id) => {
         const custom = customPersonas.find((p) => p.id === id)
         return custom ? { id, custom_persona: custom } : { id }
       })
-
       const testId = await startTest(url, finalTask, allPersonas)
       router.push(`/test/${testId}`)
     } catch (e: unknown) {
@@ -83,75 +76,61 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-[#09090f]">
-      {/* Header */}
-      <header className="border-b border-[#1e1e2e] px-6 py-4">
+      {/* Header — no logo, just wordmark */}
+      <header className="border-b border-[#1a1a2e] px-6 py-4">
         <div className="mx-auto max-w-5xl flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-purple-600 flex items-center justify-center">
-              <span className="text-white text-sm font-bold">P</span>
-            </div>
-            <span className="text-lg font-semibold text-[#e2e2f0] tracking-tight">Phantom</span>
-          </div>
-          <p className="text-xs text-[#555570] hidden sm:block">
-            Synthetic user testing with AI personas
-          </p>
+          <span className="text-lg font-semibold tracking-tight text-white">Phantom</span>
+          <span className="text-xs text-[#444460] hidden sm:block">Synthetic user testing</span>
         </div>
       </header>
 
-      <div className="mx-auto max-w-5xl px-6 py-12 space-y-12">
+      <div className="mx-auto max-w-5xl px-6 py-14 space-y-14">
+
         {/* Hero */}
-        <div className="text-center space-y-4">
-          <div className="inline-flex items-center gap-2 rounded-full border border-purple-500/20 bg-purple-500/10 px-4 py-1.5 text-xs font-medium text-purple-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-purple-400 animate-pulse" />
-            Powered by Claude
+        <div className="text-center space-y-5">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#2a2a42] bg-[#111120] px-4 py-1.5 text-xs font-medium text-[#8888bb]">
+            <Zap size={11} className="text-purple-400" />
+            GPT-4o vision · Real browser automation
           </div>
-          <h1 className="text-4xl sm:text-5xl font-bold text-[#e2e2f0] tracking-tight leading-tight">
-            See your site through
-            <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
+          <h1 className="text-4xl sm:text-5xl font-bold text-white tracking-tight leading-[1.15]">
+            See your site through<br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-purple-400 to-pink-400">
               different eyes
             </span>
           </h1>
-          <p className="text-[#8888aa] text-lg max-w-xl mx-auto leading-relaxed">
-            AI agents with real cognitive models navigate your site and report exactly where
-            different kinds of users get stuck.
+          <p className="text-[#6666aa] text-base max-w-lg mx-auto leading-relaxed">
+            AI agents with detailed cognitive models browse your site and report where real users get stuck.
           </p>
         </div>
 
-        {/* URL Input */}
-        <section>
-          <label className="block text-sm font-medium text-[#e2e2f0] mb-2">
-            Website URL
-          </label>
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Globe size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#555570]" />
-              <input
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://your-website.com"
-                className="pl-10"
-                onKeyDown={(e) => e.key === 'Enter' && canRun && handleRun()}
-              />
-            </div>
+        {/* URL */}
+        <section className="space-y-2">
+          <label className="text-sm font-medium text-[#ccccee]">Website URL</label>
+          <div className="relative">
+            <Globe size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444460]" />
+            <input
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://your-website.com"
+              className="pl-10 h-12 rounded-xl border border-[#1e1e32] bg-[#0d0d18] text-white placeholder:text-[#444460] focus:border-purple-500 focus:outline-none w-full text-sm transition-colors"
+              onKeyDown={(e) => e.key === 'Enter' && canRun && handleRun()}
+            />
           </div>
         </section>
 
         {/* Task */}
-        <section>
-          <label className="block text-sm font-medium text-[#e2e2f0] mb-3">
-            What should they try to do?
-          </label>
-          <div className="flex flex-wrap gap-2 mb-3">
+        <section className="space-y-3">
+          <label className="text-sm font-medium text-[#ccccee]">What should they try to do?</label>
+          <div className="flex flex-wrap gap-2">
             {PRESET_TASKS.map((t) => (
               <button
                 key={t.value}
                 onClick={() => { setTask(t.value); setCustomTaskMode(false) }}
                 className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-all ${
                   !customTaskMode && task === t.value
-                    ? 'border-purple-500 bg-purple-600/20 text-purple-300'
-                    : 'border-[#1e1e2e] text-[#8888aa] hover:border-[#2a2a3e] hover:text-[#e2e2f0]'
+                    ? 'border-purple-500 bg-purple-500/15 text-purple-300'
+                    : 'border-[#1e1e32] text-[#666688] hover:border-[#2e2e4a] hover:text-[#ccccee]'
                 }`}
               >
                 {t.label}
@@ -161,63 +140,50 @@ export default function Home() {
               onClick={() => setCustomTaskMode(true)}
               className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-all ${
                 customTaskMode
-                  ? 'border-purple-500 bg-purple-600/20 text-purple-300'
-                  : 'border-[#1e1e2e] text-[#8888aa] hover:border-[#2a2a3e] hover:text-[#e2e2f0]'
+                  ? 'border-purple-500 bg-purple-500/15 text-purple-300'
+                  : 'border-[#1e1e32] text-[#666688] hover:border-[#2e2e4a] hover:text-[#ccccee]'
               }`}
             >
               Custom…
             </button>
           </div>
-          {customTaskMode && (
+          {customTaskMode ? (
             <input
               type="text"
               value={customTask}
               onChange={(e) => setCustomTask(e.target.value)}
               placeholder="Describe what the persona should try to accomplish…"
-              className="animate-fade-in"
+              className="h-11 rounded-xl border border-[#1e1e32] bg-[#0d0d18] text-white placeholder:text-[#444460] focus:border-purple-500 focus:outline-none w-full px-4 text-sm transition-colors"
               autoFocus
             />
-          )}
-          {!customTaskMode && (
-            <p className="text-xs text-[#555570] mt-2 italic">"{task}"</p>
+          ) : (
+            <p className="text-xs text-[#444460] italic">"{task}"</p>
           )}
         </section>
 
-        {/* Persona selection */}
-        <section>
-          <div className="flex items-baseline justify-between mb-4">
+        {/* Persona grid */}
+        <section className="space-y-4">
+          <div className="flex items-baseline justify-between">
             <div>
-              <label className="text-sm font-medium text-[#e2e2f0]">
-                Choose personas
-              </label>
-              <p className="text-xs text-[#555570] mt-0.5">
-                Select up to 4 · {selectedIds.size} selected
-              </p>
+              <label className="text-sm font-medium text-[#ccccee]">Choose personas</label>
+              <p className="text-xs text-[#444460] mt-0.5">Select up to 4 · {selectedIds.size} selected</p>
             </div>
             {selectedIds.size > 0 && (
-              <button
-                onClick={() => setSelectedIds(new Set())}
-                className="text-xs text-[#555570] hover:text-[#e2e2f0] transition-colors"
-              >
+              <button onClick={() => setSelectedIds(new Set())} className="text-xs text-[#444460] hover:text-[#ccccee] transition-colors">
                 Clear all
               </button>
             )}
           </div>
 
           {error && (
-            <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400 mb-4">
+            <div className="rounded-xl border border-red-500/20 bg-red-500/8 px-4 py-3 text-sm text-red-400">
               {error}
             </div>
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {allPersonas.map((p) => (
-              <PersonaCard
-                key={p.id}
-                persona={p}
-                selected={selectedIds.has(p.id)}
-                onToggle={togglePersona}
-              />
+              <PersonaCard key={p.id} persona={p} selected={selectedIds.has(p.id)} onToggle={togglePersona} />
             ))}
             {selectedIds.size < 4 && (
               <CustomPersonaBuilder onPersonaCreated={handleCustomPersona} />
@@ -226,28 +192,21 @@ export default function Home() {
         </section>
 
         {/* CTA */}
-        <div className="flex flex-col items-center gap-4 pb-8">
+        <div className="flex flex-col items-center gap-3 pb-10">
           <button
             onClick={handleRun}
             disabled={!canRun}
-            className="flex items-center gap-3 rounded-2xl bg-purple-600 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-purple-500 hover:shadow-xl hover:shadow-purple-500/25 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-purple-600 disabled:hover:shadow-none"
+            className="group flex items-center gap-3 rounded-2xl bg-purple-600 px-8 py-4 text-sm font-semibold text-white transition-all hover:bg-purple-500 hover:shadow-2xl hover:shadow-purple-500/20 disabled:opacity-25 disabled:cursor-not-allowed"
           >
             {loading ? (
-              <>
-                <Loader2 size={18} className="animate-spin" />
-                Starting test…
-              </>
+              <><Loader2 size={16} className="animate-spin" />Starting…</>
             ) : (
-              <>
-                Run Phantom Test
-                <ArrowRight size={18} />
-              </>
+              <><span>Run Phantom Test</span><ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" /></>
             )}
           </button>
-          <p className="text-xs text-[#444455]">
-            Each persona runs ~25 steps · Takes 3–8 minutes per persona
-          </p>
+          <p className="text-xs text-[#333350]">~3–8 min per persona · Screenshots at every step</p>
         </div>
+
       </div>
     </main>
   )
