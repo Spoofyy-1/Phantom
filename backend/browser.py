@@ -9,6 +9,67 @@ import base64
 from typing import Optional
 from playwright.async_api import async_playwright, Page, Browser, BrowserContext
 
+# Elements to treat as interactive
+_SELECTOR = ", ".join([
+    'a[href]',
+    'button',
+    'input:not([type="hidden"])',
+    'select',
+    'textarea',
+    '[role="button"]',
+    '[role="link"]',
+    '[role="checkbox"]',
+    '[role="radio"]',
+    '[role="menuitem"]',
+    '[role="tab"]',
+    '[role="option"]',
+    '[role="combobox"]',
+    '[role="treeitem"]',
+    '[onclick]',
+    '[tabindex]:not([tabindex="-1"])',
+])
+
+_ENUMERATE_JS = """
+() => {
+    const SELECTOR = %s;
+    const els = Array.from(document.querySelectorAll(SELECTOR));
+    return els
+        .map((el, i) => {
+            const rect = el.getBoundingClientRect();
+            const style = window.getComputedStyle(el);
+            const visible = (
+                rect.width > 0 && rect.height > 0 &&
+                style.visibility !== 'hidden' &&
+                style.display !== 'none' &&
+                style.opacity !== '0' &&
+                rect.top < window.innerHeight + 100 &&
+                rect.bottom > -100
+            );
+            if (!visible) return null;
+            const rawText = (
+                el.getAttribute('aria-label') ||
+                el.getAttribute('title') ||
+                el.textContent ||
+                el.value ||
+                el.placeholder ||
+                el.getAttribute('alt') || ''
+            ).replace(/\\s+/g, ' ').trim().slice(0, 100);
+            return {
+                id: i + 1,
+                tag: el.tagName.toLowerCase(),
+                type: el.type || el.getAttribute('role') || el.tagName.toLowerCase(),
+                text: rawText,
+                href: el.href || '',
+                x: Math.round(rect.left + rect.width / 2),
+                y: Math.round(rect.top + rect.height / 2),
+                disabled: el.disabled || el.getAttribute('aria-disabled') === 'true',
+            };
+        })
+        .filter(Boolean)
+        .slice(0, 80);
+}
+""" % repr(_SELECTOR)
+
 
 class BrowserSession:
     def __init__(self, headless: bool = True):
@@ -26,106 +87,38 @@ class BrowserSession:
             args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
         )
         self._context = await self._browser.new_context(
-            viewport={"width": 1280, "height": 720},
+            viewport={"width": 1280, "height": 800},
             user_agent=(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
                 "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/120.0.0.0 Safari/537.36"
-            )
+                "Chrome/124.0.0.0 Safari/537.36"
+            ),
         )
         self.page = await self._context.new_page()
         await self.page.goto(url, wait_until="domcontentloaded", timeout=30000)
         await self._wait_for_settle()
 
-    async def _wait_for_settle(self, timeout: int = 2000) -> None:
-        """Wait for network to mostly settle."""
+    async def _wait_for_settle(self, timeout: int = 2500) -> None:
         try:
             await self.page.wait_for_load_state("networkidle", timeout=timeout)
         except Exception:
-            pass  # Acceptable — just means the page is still loading non-critical assets
+            pass
 
     # ------------------------------------------------------------------ #
     # State capture
     # ------------------------------------------------------------------ #
 
     async def screenshot(self) -> str:
-        """Return base64-encoded PNG screenshot of the viewport."""
         data = await self.page.screenshot(type="png", full_page=False)
         return base64.b64encode(data).decode()
 
     async def get_interactive_elements(self) -> list[dict]:
-        """
-        Inject JS to enumerate all visible interactive elements,
-        numbered 1..N for Claude to reference.
-        """
-        elements = await self.page.evaluate("""
-        () => {
-            const SELECTOR = [
-                'a[href]',
-                'button',
-                'input:not([type="hidden"])',
-                'select',
-                'textarea',
-                '[role="button"]',
-                '[role="link"]',
-                '[role="checkbox"]',
-                '[role="radio"]',
-                '[role="menuitem"]',
-                '[role="tab"]',
-                '[role="option"]',
-                '[role="combobox"]',
-                '[tabindex]:not([tabindex="-1"])',
-            ].join(', ');
-
-            const els = Array.from(document.querySelectorAll(SELECTOR));
-
-            return els
-                .map((el, i) => {
-                    const rect = el.getBoundingClientRect();
-                    const style = window.getComputedStyle(el);
-                    const visible = (
-                        rect.width > 0 &&
-                        rect.height > 0 &&
-                        style.visibility !== 'hidden' &&
-                        style.display !== 'none' &&
-                        style.opacity !== '0' &&
-                        rect.top < window.innerHeight &&
-                        rect.bottom > 0
-                    );
-                    if (!visible) return null;
-
-                    const rawText = (
-                        el.getAttribute('aria-label') ||
-                        el.getAttribute('title') ||
-                        el.textContent ||
-                        el.value ||
-                        el.placeholder ||
-                        el.getAttribute('alt') ||
-                        ''
-                    ).replace(/\\s+/g, ' ').trim().slice(0, 100);
-
-                    return {
-                        id: i + 1,
-                        tag: el.tagName.toLowerCase(),
-                        type: el.type || el.getAttribute('role') || el.tagName.toLowerCase(),
-                        text: rawText,
-                        href: el.href || '',
-                        x: Math.round(rect.left + rect.width / 2),
-                        y: Math.round(rect.top + rect.height / 2),
-                        disabled: el.disabled || el.getAttribute('aria-disabled') === 'true',
-                    };
-                })
-                .filter(Boolean)
-                .slice(0, 50);
-        }
-        """)
+        elements = await self.page.evaluate(_ENUMERATE_JS)
         return elements or []
 
     async def get_page_state(self) -> dict:
-        """Snapshot: screenshot + elements + url + title."""
         screenshot = await self.screenshot()
         elements = await self.get_interactive_elements()
-        # Cache coordinates so click_element can use exact pixel positions
         self._element_coords = {el["id"]: (el["x"], el["y"]) for el in elements}
         url = self.page.url
         try:
@@ -144,67 +137,146 @@ class BrowserSession:
     # ------------------------------------------------------------------ #
 
     async def click_element(self, element_id: int) -> bool:
-        """Click an element using the coordinates captured during the last get_page_state call."""
-        try:
-            coords = self._element_coords.get(element_id)
-            if coords:
+        """
+        Click using cached coordinates with a multi-strategy fallback chain:
+        1. Hover then mouse click (handles hover-reveal menus)
+        2. JS dispatchEvent (handles elements that ignore synthetic mouse events)
+        3. DOM re-query click (last resort)
+        """
+        # Strategy 1: hover → mouse.click using cached coords
+        coords = self._element_coords.get(element_id)
+        if coords:
+            try:
                 x, y = coords
+                await self.page.mouse.move(x, y)
+                await asyncio.sleep(0.15)
                 await self.page.mouse.click(x, y)
                 await asyncio.sleep(0.8)
-                await self._wait_for_settle(1500)
+                await self._wait_for_settle(2000)
                 return True
-            # Fallback: re-query DOM by index if coords are missing
+            except Exception:
+                pass
+
+        # Strategy 2: JS dispatchEvent by re-querying DOM index
+        try:
             result = await self.page.evaluate("""
             (id) => {
-                const SELECTOR = [
-                    'a[href]', 'button', 'input:not([type="hidden"])',
-                    'select', 'textarea', '[role="button"]', '[role="link"]',
-                    '[role="checkbox"]', '[role="radio"]', '[role="menuitem"]',
-                    '[role="tab"]', '[role="option"]', '[role="combobox"]',
-                    '[tabindex]:not([tabindex="-1"])',
-                ].join(', ');
+                const SELECTOR = %s;
                 const els = Array.from(document.querySelectorAll(SELECTOR)).filter(el => {
-                    const rect = el.getBoundingClientRect();
-                    const style = window.getComputedStyle(el);
-                    return rect.width > 0 && rect.height > 0 &&
-                           style.visibility !== 'hidden' &&
-                           style.display !== 'none';
+                    const r = el.getBoundingClientRect();
+                    const s = window.getComputedStyle(el);
+                    return r.width > 0 && r.height > 0 &&
+                           s.visibility !== 'hidden' && s.display !== 'none';
                 });
-                const target = els[id - 1];
-                if (target) { target.click(); return true; }
-                return false;
+                const t = els[id - 1];
+                if (!t) return false;
+                t.dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true}));
+                return true;
             }
-            """, element_id)
-            await asyncio.sleep(0.8)
-            await self._wait_for_settle(1500)
-            return bool(result)
+            """ % repr(_SELECTOR), element_id)
+            if result:
+                await asyncio.sleep(0.8)
+                await self._wait_for_settle(2000)
+                return True
         except Exception:
-            return False
+            pass
+
+        # Strategy 3: JS .click() fallback
+        try:
+            await self.page.evaluate("""
+            (id) => {
+                const SELECTOR = %s;
+                const els = Array.from(document.querySelectorAll(SELECTOR)).filter(el => {
+                    const r = el.getBoundingClientRect();
+                    return r.width > 0 && r.height > 0;
+                });
+                const t = els[id - 1];
+                if (t) t.click();
+            }
+            """ % repr(_SELECTOR), element_id)
+            await asyncio.sleep(0.8)
+            await self._wait_for_settle(2000)
+        except Exception:
+            pass
+
+        return False
+
+    async def click_by_text(self, text: str) -> bool:
+        """
+        Find and click the first visible element whose text/label contains the given string.
+        Useful when element_id clicking fails (dynamic content, hover-only elements, etc.)
+        """
+        # Try Playwright's built-in text locator first
+        for locator in [
+            self.page.get_by_text(text, exact=True),
+            self.page.get_by_text(text, exact=False),
+            self.page.get_by_role("link", name=text),
+            self.page.get_by_role("button", name=text),
+        ]:
+            try:
+                count = await locator.count()
+                if count > 0:
+                    el = locator.first
+                    await el.scroll_into_view_if_needed()
+                    await el.hover()
+                    await asyncio.sleep(0.1)
+                    await el.click()
+                    await asyncio.sleep(0.8)
+                    await self._wait_for_settle(2000)
+                    return True
+            except Exception:
+                continue
+
+        # Fallback: scan all elements for partial text match, click by coords
+        try:
+            coords = await self.page.evaluate("""
+            (text) => {
+                const lower = text.toLowerCase();
+                const all = Array.from(document.querySelectorAll('a, button, [role="button"], [role="link"]'));
+                for (const el of all) {
+                    const t = (el.textContent || el.getAttribute('aria-label') || '').toLowerCase();
+                    if (t.includes(lower)) {
+                        const r = el.getBoundingClientRect();
+                        if (r.width > 0 && r.height > 0) {
+                            return [Math.round(r.left + r.width/2), Math.round(r.top + r.height/2)];
+                        }
+                    }
+                }
+                return null;
+            }
+            """, text)
+            if coords:
+                await self.page.mouse.move(coords[0], coords[1])
+                await asyncio.sleep(0.1)
+                await self.page.mouse.click(coords[0], coords[1])
+                await asyncio.sleep(0.8)
+                await self._wait_for_settle(2000)
+                return True
+        except Exception:
+            pass
+
+        return False
 
     async def click_coordinates(self, x: int, y: int) -> None:
+        await self.page.mouse.move(x, y)
+        await asyncio.sleep(0.1)
         await self.page.mouse.click(x, y)
         await asyncio.sleep(0.8)
         await self._wait_for_settle(1500)
 
     async def type_text(self, text: str) -> None:
-        """Type text into the currently focused element."""
         await self.page.keyboard.type(text, delay=30)
         await asyncio.sleep(0.3)
-
-    async def fill_focused(self, text: str) -> None:
-        """Clear focused input and type new text."""
-        await self.page.keyboard.press("Control+a")
-        await self.page.keyboard.press("Delete")
-        await self.page.keyboard.type(text, delay=30)
 
     async def press_key(self, key: str) -> None:
         await self.page.keyboard.press(key)
         await asyncio.sleep(0.5)
 
-    async def scroll(self, direction: str = "down", amount: int = 400) -> None:
+    async def scroll(self, direction: str = "down", amount: int = 500) -> None:
         delta = amount if direction == "down" else -amount
         await self.page.mouse.wheel(0, delta)
         await asyncio.sleep(0.4)
+        await self._wait_for_settle(800)
 
     async def navigate(self, url: str) -> None:
         await self.page.goto(url, wait_until="domcontentloaded", timeout=30000)

@@ -25,7 +25,7 @@ Respond with ONLY a JSON object — no markdown, no explanation:
   "confusion": "describe what is confusing you right now, or null if nothing",
   "confusion_score": 0,
   "action": {
-    "type": "click | type | scroll | navigate | back | press_enter | done | give_up",
+    "type": "click | click_text | type | scroll | navigate | back | press_enter | done | give_up",
     "element_id": null,
     "text": null,
     "direction": null,
@@ -35,23 +35,24 @@ Respond with ONLY a JSON object — no markdown, no explanation:
 }
 
 Action type rules:
-- "click": set element_id to the number from the element list
-- "type": set text to the string to type into the currently focused/clicked field
+- "click": set element_id to the number shown in the element list
+- "click_text": set text to the EXACT visible label/text of the element to click — use this when click by element_id is not working or when an element is not in the numbered list
+- "type": set text to the string to type into the currently focused field
 - "scroll": set direction to "up" or "down"
-- "navigate": set url to a full URL
+- "navigate": set url to a full URL (include https://)
 - "back": go back in browser history
-- "press_enter": submit a form or confirm a selection
-- "done": task completed — set reason to a thorough summary: what the site does, key pages visited, main features found, value proposition, and any UX issues noticed
+- "press_enter": submit a form or confirm selection
+- "done": task completed — set reason to a thorough summary: what the site does, key pages visited, main features, value proposition, and any UX issues noticed
 - "give_up": cannot complete — set reason explaining exactly where you got stuck
 
 confusion_score: integer 0-10 (0 = no confusion, 10 = completely stuck)
 
 CRITICAL RULES:
 - You MUST take a different action each step. Never repeat the same action twice in a row.
-- If you have been scrolling, stop scrolling and CLICK something instead.
-- If you want to explore a page, CLICK its links — do not just describe what you see.
-- "scroll" should only be used to reveal content that is not yet visible. Use it at most twice before clicking.
-- Prioritise navigating to new pages over staying on the current one.
+- If click by element_id does not navigate to a new page after 2 tries, switch to click_text using the exact visible text of the link.
+- If you have been scrolling, stop and CLICK something.
+- "scroll" should only be used to reveal content not yet visible. Use it at most twice before clicking.
+- Prioritise clicking links that navigate to new pages.
 """
 
 
@@ -291,6 +292,10 @@ async def run_persona_session(
                     eid = action.get("element_id")
                     if eid:
                         await session.click_element(int(eid))
+                elif action_type == "click_text":
+                    txt = action.get("text", "")
+                    if txt:
+                        await session.click_by_text(txt)
                 elif action_type == "type":
                     text = action.get("text", "")
                     if text:
