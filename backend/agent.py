@@ -1,7 +1,6 @@
 """
 Phantom — Claude-powered browser agent.
-Each persona gets its own session; Claude drives Playwright through the site
-and logs confusion events in real time.
+Uses OpenAI GPT-4o for vision (screenshot analysis + action decisions).
 """
 
 import asyncio
@@ -11,12 +10,11 @@ import re
 import time
 from typing import Callable, Awaitable, Optional
 
-from anthropic import AsyncAnthropic
+from openai import AsyncOpenAI
 
 from browser import BrowserSession
 from personas import ARCHETYPE_MAP
 
-# How many steps before we force-stop a persona session
 MAX_STEPS = 25
 
 ACTION_SCHEMA = """
@@ -43,10 +41,10 @@ Action type rules:
 - "navigate": set url to a full URL
 - "back": go back in browser history
 - "press_enter": submit a form or confirm a selection
-- "done": task completed successfully — set reason explaining what you accomplished
+- "done": task completed — set reason explaining what you accomplished
 - "give_up": cannot complete — set reason explaining exactly where you got stuck
 
-confusion_score: integer 0-10 (0 = no confusion, 10 = completely stuck/giving up)
+confusion_score: integer 0-10 (0 = no confusion, 10 = completely stuck)
 """
 
 
@@ -62,14 +60,11 @@ def _format_elements(elements: list[dict]) -> str:
 
 
 def _parse_action(raw: str) -> Optional[dict]:
-    """Extract JSON from the model's response, tolerating minor formatting issues."""
     raw = raw.strip()
-    # Strip markdown fences
     if "```" in raw:
         blocks = re.findall(r"```(?:json)?\s*([\s\S]*?)```", raw)
         if blocks:
             raw = blocks[0].strip()
-    # Find first {...} block
     match = re.search(r"\{[\s\S]*\}", raw)
     if match:
         try:
@@ -79,6 +74,27 @@ def _parse_action(raw: str) -> Optional[dict]:
     return None
 
 
+def _build_openai_messages(system_prompt: str, history: list[dict], current_user_content: list) -> list[dict]:
+    """
+    Build the OpenAI messages list.
+    System goes first. For history, strip images from older turns to save tokens —
+    only the current (latest) user message keeps its screenshot.
+    """
+    result = [{"role": "system", "content": system_prompt}]
+
+    for msg in history:
+        if msg["role"] == "user" and isinstance(msg["content"], list):
+            # Strip images from historical user messages
+            text_only = [c for c in msg["content"] if c.get("type") == "text"]
+            result.append({"role": "user", "content": text_only})
+        else:
+            result.append(msg)
+
+    # Append current step (with screenshot)
+    result.append({"role": "user", "content": current_user_content})
+    return result
+
+
 async def run_persona_session(
     persona_id: str,
     custom_persona: Optional[dict],
@@ -86,11 +102,6 @@ async def run_persona_session(
     task: str,
     on_event: Callable[[dict], Awaitable[None]],
 ) -> dict:
-    """
-    Run a single persona through the site and return a result dict.
-    Calls on_event() with live progress events.
-    """
-    # Resolve persona
     if custom_persona:
         persona = custom_persona
     elif persona_id in ARCHETYPE_MAP:
@@ -98,7 +109,7 @@ async def run_persona_session(
     else:
         raise ValueError(f"Unknown persona: {persona_id}")
 
-    client = AsyncAnthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    client = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
     session = BrowserSession(headless=True)
     events: list[dict] = []
@@ -106,7 +117,8 @@ async def run_persona_session(
 
     system_prompt = persona["system_prompt"] + "\n\n" + ACTION_SCHEMA
 
-    messages: list[dict] = []
+    # Conversation history — user/assistant turns only (system is prepended per-call)
+    history: list[dict] = []
     start_time = time.time()
 
     await on_event({
@@ -119,17 +131,16 @@ async def run_persona_session(
         await session.start(url)
 
         for step in range(MAX_STEPS):
-            # -- Capture page state --
             state = await session.get_page_state()
             elements_text = _format_elements(state["elements"])
 
-            user_content = [
+            # Current step user content — screenshot + text
+            current_user_content = [
                 {
-                    "type": "image",
-                    "source": {
-                        "type": "base64",
-                        "media_type": "image/png",
-                        "data": state["screenshot"],
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/png;base64,{state['screenshot']}",
+                        "detail": "low",  # faster + cheaper; switch to "high" for more accuracy
                     },
                 },
                 {
@@ -144,23 +155,25 @@ async def run_persona_session(
                 },
             ]
 
-            messages.append({"role": "user", "content": user_content})
+            messages_for_api = _build_openai_messages(system_prompt, history, current_user_content)
 
-            # -- Ask Claude --
-            response = await client.messages.create(
-                model="claude-opus-4-6",
+            response = await client.chat.completions.create(
+                model="gpt-4o",
                 max_tokens=512,
-                system=system_prompt,
-                messages=messages,
+                messages=messages_for_api,
             )
 
-            raw_reply = response.content[0].text
-            messages.append({"role": "assistant", "content": raw_reply})
+            raw_reply = response.choices[0].message.content or ""
 
-            # -- Parse --
+            # Add to history (store user turn without screenshot to save memory)
+            history.append({
+                "role": "user",
+                "content": [c for c in current_user_content if c.get("type") == "text"],
+            })
+            history.append({"role": "assistant", "content": raw_reply})
+
             parsed = _parse_action(raw_reply)
             if not parsed:
-                # Malformed response — skip step
                 continue
 
             action = parsed.get("action", {})
@@ -186,7 +199,6 @@ async def run_persona_session(
             events.append(step_event)
             await on_event(step_event)
 
-            # -- Record confusion events --
             if confusion and confusion_score >= 4:
                 confusion_events.append({
                     "step": step + 1,
@@ -197,7 +209,6 @@ async def run_persona_session(
                     "screenshot": state["screenshot"],
                 })
 
-            # -- Terminal actions --
             if action_type in ("done", "give_up"):
                 result = {
                     "persona_id": persona_id,
@@ -224,7 +235,7 @@ async def run_persona_session(
                 })
                 return result
 
-            # -- Execute action --
+            # Execute action
             try:
                 if action_type == "click":
                     eid = action.get("element_id")
@@ -235,8 +246,7 @@ async def run_persona_session(
                     if text:
                         await session.type_text(str(text))
                 elif action_type == "scroll":
-                    direction = action.get("direction", "down")
-                    await session.scroll(direction)
+                    await session.scroll(action.get("direction", "down"))
                 elif action_type == "navigate":
                     nav_url = action.get("url", "")
                     if nav_url:
@@ -246,9 +256,9 @@ async def run_persona_session(
                 elif action_type == "press_enter":
                     await session.press_key("Enter")
             except Exception:
-                pass  # Log silently — agent will see the unchanged state next step
+                pass
 
-        # -- Ran out of steps --
+        # Hit max steps
         result = {
             "persona_id": persona_id,
             "persona_name": persona["name"],
@@ -304,17 +314,12 @@ async def run_test(
     test_id: str,
     url: str,
     task: str,
-    personas: list[dict],  # list of {id, custom_persona?}
+    personas: list[dict],
     on_event: Callable[[dict], Awaitable[None]],
 ) -> dict:
-    """
-    Run all selected personas sequentially (to avoid overwhelming Railway).
-    Returns aggregated results.
-    """
     await on_event({"type": "test_start", "test_id": test_id, "url": url, "task": task})
 
     persona_results = []
-
     for p in personas:
         result = await run_persona_session(
             persona_id=p.get("id", ""),
@@ -325,7 +330,6 @@ async def run_test(
         )
         persona_results.append(result)
 
-    # Aggregate
     total_personas = len(persona_results)
     succeeded = sum(1 for r in persona_results if r["success"])
     avg_confusion = (
@@ -334,13 +338,11 @@ async def run_test(
     )
     ux_score = max(0, round(10 - avg_confusion, 1))
 
-    # Collect top confusion moments
     all_confusion = []
     for r in persona_results:
         for ce in r["confusion_events"]:
             all_confusion.append({**ce, "persona_name": r["persona_name"]})
     all_confusion.sort(key=lambda x: x["confusion_score"], reverse=True)
-    top_issues = all_confusion[:5]
 
     final_results = {
         "test_id": test_id,
@@ -351,7 +353,7 @@ async def run_test(
         "total_personas": total_personas,
         "ux_score": ux_score,
         "avg_confusion": round(avg_confusion, 1),
-        "top_issues": top_issues,
+        "top_issues": all_confusion[:5],
     }
 
     await on_event({"type": "test_complete", "test_id": test_id, "results": final_results})
