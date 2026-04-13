@@ -1,0 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #09090f;
+  --surface: #111118;
+  --border: #1e1e2e;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  background-color: var(--bg);
+  color: #e2e2f0;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: #2a2a3e;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3a3a52;
+}
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid #7c3aed;
+  outline-offset: 2px;
+}
+
+/* Textarea / input base */
+textarea,
+input[type='text'],
+input[type='url'] {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: #e2e2f0;
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 15px;
+  font-family: inherit;
+  width: 100%;
+  transition: border-color 0.15s;
+}
+
+textarea:focus,
+input[type='text']:focus,
+input[type='url']:focus {
+  outline: none;
+  border-color: #7c3aed;
+}
+
+textarea::placeholder,
+input::placeholder {
+  color: #555570;
+}
+
+/* Prose in results */
+.prose-phantom p {
+  color: #b0b0cc;
+  line-height: 1.7;
+  margin-bottom: 8px;
+}
