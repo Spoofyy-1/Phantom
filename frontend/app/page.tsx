@@ -159,7 +159,7 @@ export default function Home() {
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://your-website.com"
-                className="input-phantom pl-10 h-14 text-base"
+                className="input-phantom pl-12 h-14 text-base"
                 onKeyDown={(e) => e.key === 'Enter' && canRun && handleRun()}
               />
             </div>

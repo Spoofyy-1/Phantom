@@ -15,7 +15,7 @@ from openai import AsyncOpenAI
 from browser import BrowserSession
 from personas import ARCHETYPE_MAP
 
-MAX_STEPS = 25
+MAX_STEPS = 50
 
 ACTION_SCHEMA = """
 Respond with ONLY a JSON object — no markdown, no explanation:
