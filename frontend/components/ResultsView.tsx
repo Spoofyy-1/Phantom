@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { AlertTriangle, CheckCircle2, XCircle, ChevronDown, ChevronUp, Image as ImageIcon } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, XCircle, ChevronDown, ChevronUp, Image as ImageIcon, Lightbulb, FileText } from 'lucide-react'
 import type { TestResults, PersonaResult, ConfusionEvent } from '@/types'
 import clsx from 'clsx'
 
@@ -158,9 +158,17 @@ function PersonaSummary({ result }: { result: PersonaResult }) {
   )
 }
 
+const GRADE_LABEL: Record<string, string> = {
+  A: 'Excellent', B: 'Good', C: 'Needs Work', D: 'Poor', F: 'Critical Issues',
+}
+const GRADE_COLOR: Record<string, string> = {
+  A: '#10b981', B: '#6366f1', C: '#f59e0b', D: '#ef4444', F: '#dc2626',
+}
+
 export function ResultsView({ results }: { results: TestResults }) {
-  const { ux_score, succeeded, total_personas, top_issues, personas } = results
+  const { ux_score, grade, succeeded, total_personas, top_issues, personas, summary, recommendations } = results
   const allErrored = personas.length > 0 && personas.every(p => !p.success && p.steps_taken === 0)
+  const gradeColor = GRADE_COLOR[grade] ?? '#6366f1'
 
   return (
     <div className="space-y-8 animate-slide-up">
@@ -177,10 +185,22 @@ export function ResultsView({ results }: { results: TestResults }) {
             </div>
           </div>
         ) : (
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-6 flex-wrap">
             <ScoreRing score={ux_score} />
+            {/* Grade badge */}
+            <div
+              className="flex flex-col items-center justify-center h-16 w-16 rounded-2xl font-black text-2xl border"
+              style={{ color: gradeColor, background: `${gradeColor}15`, borderColor: `${gradeColor}30` }}
+            >
+              {grade}
+            </div>
             <div>
-              <p className="text-2xl font-bold text-[#e2e2f0]">UX Score</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-bold text-[#e2e2f0]">UX Score</p>
+                <span className="text-sm font-medium px-2 py-0.5 rounded-full" style={{ color: gradeColor, background: `${gradeColor}15` }}>
+                  {GRADE_LABEL[grade] ?? grade}
+                </span>
+              </div>
               <p className="text-[#8888aa] mt-1">
                 {succeeded}/{total_personas} personas completed the task
                 {' · '}
@@ -190,6 +210,40 @@ export function ResultsView({ results }: { results: TestResults }) {
           </div>
         )}
       </div>
+
+      {/* AI Summary */}
+      {summary && (
+        <div className="rounded-2xl border border-[#1e1e2e] bg-[#111118] p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <FileText size={15} className="text-purple-400" />
+            <h2 className="text-base font-semibold text-[#e2e2f0]">Assessment</h2>
+          </div>
+          <p className="text-sm text-[#8888aa] leading-relaxed">{summary}</p>
+        </div>
+      )}
+
+      {/* Recommendations */}
+      {recommendations && recommendations.length > 0 && (
+        <div className="rounded-2xl border border-[#1e1e2e] bg-[#111118] p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <Lightbulb size={15} className="text-amber-400" />
+            <h2 className="text-base font-semibold text-[#e2e2f0]">Recommendations</h2>
+          </div>
+          <ul className="space-y-2">
+            {recommendations.map((rec, i) => (
+              <li key={i} className="flex items-start gap-3">
+                <span
+                  className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-black"
+                  style={{ backgroundColor: '#f59e0b' }}
+                >
+                  {i + 1}
+                </span>
+                <p className="text-sm text-[#ccccee] leading-relaxed">{rec}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Top friction points */}
       {top_issues.length > 0 && (

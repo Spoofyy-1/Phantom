@@ -310,6 +310,65 @@ async def run_persona_session(
         await session.close()
 
 
+def _grade(score: float) -> str:
+    if score >= 9:   return "A"
+    if score >= 7:   return "B"
+    if score >= 5:   return "C"
+    if score >= 3:   return "D"
+    return "F"
+
+
+async def _generate_summary(
+    client: AsyncOpenAI,
+    url: str,
+    task: str,
+    persona_results: list[dict],
+    ux_score: float,
+) -> dict:
+    """Call GPT-4o-mini to produce a brief summary + actionable recommendations."""
+    lines = []
+    for r in persona_results:
+        status = "completed" if r["success"] else ("errored" if r["steps_taken"] == 0 else "gave up")
+        top_confusions = sorted(r["confusion_events"], key=lambda x: x["confusion_score"], reverse=True)[:3]
+        confusion_notes = "; ".join(c["confusion_note"] for c in top_confusions) or "none"
+        lines.append(
+            f"- {r['persona_name']} ({r['persona_id']}): {status} in {r['steps_taken']} steps. "
+            f"Top friction: {confusion_notes}"
+        )
+
+    prompt = (
+        f"You are a UX analyst. A synthetic user test of '{url}' was run.\n"
+        f"Task given to AI personas: \"{task}\"\n"
+        f"Overall UX score: {ux_score}/10\n\n"
+        f"Persona results:\n" + "\n".join(lines) + "\n\n"
+        "Write a JSON object with exactly these two keys:\n"
+        "  \"summary\": a 2-3 sentence plain-English overall assessment of the UX\n"
+        "  \"recommendations\": an array of 3-5 short, specific, actionable improvements (each under 20 words)\n"
+        "Respond with ONLY the JSON — no markdown, no explanation."
+    )
+
+    try:
+        resp = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            max_tokens=400,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = resp.choices[0].message.content or "{}"
+        raw = raw.strip()
+        if "```" in raw:
+            import re as _re
+            blocks = _re.findall(r"```(?:json)?\s*([\s\S]*?)```", raw)
+            if blocks:
+                raw = blocks[0].strip()
+        parsed = json.loads(raw)
+        return {
+            "summary": str(parsed.get("summary", "")),
+            "recommendations": list(parsed.get("recommendations", [])),
+        }
+    except Exception:
+        return {"summary": "", "recommendations": []}
+
+
 async def run_test(
     test_id: str,
     url: str,
@@ -332,17 +391,29 @@ async def run_test(
 
     total_personas = len(persona_results)
     succeeded = sum(1 for r in persona_results if r["success"])
+
+    # Exclude errored personas (0 steps) from confusion average so they don't
+    # inflate the score — only count personas that actually browsed.
+    active = [r for r in persona_results if r["steps_taken"] > 0]
     avg_confusion = (
-        sum(r["total_confusion_score"] for r in persona_results) / total_personas
-        if total_personas > 0 else 0
+        sum(r["total_confusion_score"] for r in active) / len(active)
+        if active else 0
     )
-    ux_score = max(0, round(10 - avg_confusion, 1))
+
+    # Weighted score: 60% completion rate + 40% confusion score
+    completion_score = (succeeded / total_personas * 10) if total_personas > 0 else 0
+    confusion_score  = max(0.0, 10.0 - avg_confusion)
+    ux_score = round(0.6 * completion_score + 0.4 * confusion_score, 1)
 
     all_confusion = []
     for r in persona_results:
         for ce in r["confusion_events"]:
             all_confusion.append({**ce, "persona_name": r["persona_name"]})
     all_confusion.sort(key=lambda x: x["confusion_score"], reverse=True)
+
+    # Generate AI summary (non-blocking — falls back to empty strings on failure)
+    client = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
+    ai_feedback = await _generate_summary(client, url, task, persona_results, ux_score)
 
     final_results = {
         "test_id": test_id,
@@ -352,8 +423,11 @@ async def run_test(
         "succeeded": succeeded,
         "total_personas": total_personas,
         "ux_score": ux_score,
+        "grade": _grade(ux_score),
         "avg_confusion": round(avg_confusion, 1),
         "top_issues": all_confusion[:5],
+        "summary": ai_feedback["summary"],
+        "recommendations": ai_feedback["recommendations"],
     }
 
     await on_event({"type": "test_complete", "test_id": test_id, "results": final_results})

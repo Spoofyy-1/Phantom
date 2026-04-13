@@ -10,11 +10,11 @@ import { CustomPersonaBuilder } from '@/components/CustomPersonaBuilder'
 import type { Archetype, PersonaRef } from '@/types'
 
 const PRESET_TASKS = [
-  { label: 'Explore the site',  value: 'Explore this website. Understand what it offers and find the main features.' },
-  { label: 'Sign up',           value: 'Try to create a new account or sign up for this service.' },
-  { label: 'Find pricing',      value: 'Find out how much this service costs and what plans are available.' },
-  { label: 'Contact support',   value: 'Try to contact support or find help documentation.' },
-  { label: 'Make a purchase',   value: 'Try to purchase a product or complete a checkout flow.' },
+  { label: 'Explore the site',  value: 'You are visiting this website for the first time. Explore it as a curious new visitor: understand what the product or service does, find the main value proposition, discover key features or sections, and identify any calls-to-action. Note anything confusing, unclear, or hard to find.' },
+  { label: 'Sign up',           value: 'Try to create a new account or sign up for this service. Go through the full registration flow and note any friction, confusing fields, or unexpected steps.' },
+  { label: 'Find pricing',      value: 'Find out how much this service costs and what plans are available. Look for a pricing page, compare tiers if they exist, and note anything that is unclear or hard to find.' },
+  { label: 'Contact support',   value: 'Try to contact the support team or find help documentation. Look for a contact form, chat widget, help centre, or FAQ. Note how easy or hard it is to get help.' },
+  { label: 'Make a purchase',   value: 'Try to purchase a product or complete a checkout flow. Add something to your cart, proceed to checkout, and go as far as you can without real payment details. Note any friction points.' },
 ]
 
 const fadeUp = {

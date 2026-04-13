@@ -62,8 +62,11 @@ export interface TestResults {
   succeeded: number
   total_personas: number
   ux_score: number
+  grade: string
   avg_confusion: number
   top_issues: ConfusionEvent[]
+  summary: string
+  recommendations: string[]
 }
 
 export type LiveEvent =
