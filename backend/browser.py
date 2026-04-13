@@ -17,6 +17,7 @@ class BrowserSession:
         self._browser: Optional[Browser] = None
         self._context: Optional[BrowserContext] = None
         self.page: Optional[Page] = None
+        self._element_coords: dict[int, tuple[int, int]] = {}  # id → (x, y)
 
     async def start(self, url: str) -> None:
         self._playwright = await async_playwright().start()
@@ -124,6 +125,8 @@ class BrowserSession:
         """Snapshot: screenshot + elements + url + title."""
         screenshot = await self.screenshot()
         elements = await self.get_interactive_elements()
+        # Cache coordinates so click_element can use exact pixel positions
+        self._element_coords = {el["id"]: (el["x"], el["y"]) for el in elements}
         url = self.page.url
         try:
             title = await self.page.title()
@@ -141,8 +144,16 @@ class BrowserSession:
     # ------------------------------------------------------------------ #
 
     async def click_element(self, element_id: int) -> bool:
-        """Click the nth interactive element (1-indexed) by re-querying the DOM."""
+        """Click an element using the coordinates captured during the last get_page_state call."""
         try:
+            coords = self._element_coords.get(element_id)
+            if coords:
+                x, y = coords
+                await self.page.mouse.click(x, y)
+                await asyncio.sleep(0.8)
+                await self._wait_for_settle(1500)
+                return True
+            # Fallback: re-query DOM by index if coords are missing
             result = await self.page.evaluate("""
             (id) => {
                 const SELECTOR = [
