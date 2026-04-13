@@ -23,14 +23,17 @@ load_dotenv()
 
 app = FastAPI(title="Phantom API", version="1.0.0")
 
-# CORS — allow Vercel frontend + local dev
+# CORS — allow Vercel frontend + local dev.
+# allow_origins doesn't support wildcards; use allow_origin_regex for *.vercel.app.
+_extra_origin = os.environ.get("FRONTEND_URL", "")
+_static_origins = ["http://localhost:3000", "http://localhost:3001"]
+if _extra_origin:
+    _static_origins.append(_extra_origin)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "https://*.vercel.app",
-        os.environ.get("FRONTEND_URL", ""),
-    ],
+    allow_origins=_static_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

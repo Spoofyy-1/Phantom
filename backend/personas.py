@@ -4,7 +4,7 @@ Each archetype is a rich cognitive model used to prompt Claude.
 """
 
 from typing import Optional
-import anthropic
+from anthropic import AsyncAnthropic
 import json
 import os
 
@@ -424,7 +424,7 @@ async def expand_persona(description: str) -> dict:
     Take a brief user description and expand it into a full cognitive model.
     Returns a persona dict compatible with the archetype format.
     """
-    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    client = AsyncAnthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
     prompt = f"""The user wants to create a custom UX testing persona based on this brief description:
 
@@ -455,7 +455,7 @@ Rules for the system_prompt:
 
 Return ONLY the JSON, no markdown, no explanation."""
 
-    message = client.messages.create(
+    message = await client.messages.create(
         model="claude-opus-4-6",
         max_tokens=2000,
         messages=[{"role": "user", "content": prompt}]

@@ -11,7 +11,7 @@ import re
 import time
 from typing import Callable, Awaitable, Optional
 
-import anthropic
+from anthropic import AsyncAnthropic
 
 from browser import BrowserSession
 from personas import ARCHETYPE_MAP
@@ -98,7 +98,7 @@ async def run_persona_session(
     else:
         raise ValueError(f"Unknown persona: {persona_id}")
 
-    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    client = AsyncAnthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
     session = BrowserSession(headless=True)
     events: list[dict] = []
@@ -147,7 +147,7 @@ async def run_persona_session(
             messages.append({"role": "user", "content": user_content})
 
             # -- Ask Claude --
-            response = client.messages.create(
+            response = await client.messages.create(
                 model="claude-opus-4-6",
                 max_tokens=512,
                 system=system_prompt,
