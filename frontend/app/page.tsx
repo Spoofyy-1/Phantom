@@ -71,11 +71,17 @@ export default function Home() {
     setLoading(true)
     setError(null)
     try {
+      // Auto-prepend https:// if the user omitted the protocol
+      let finalUrl = url.trim()
+      if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
+        finalUrl = 'https://' + finalUrl
+        setUrl(finalUrl)
+      }
       const allPersonas: PersonaRef[] = Array.from(selectedIds).map((id) => {
         const custom = customPersonas.find((p) => p.id === id)
         return custom ? { id, custom_persona: custom } : { id }
       })
-      const testId = await startTest(url, finalTask, allPersonas)
+      const testId = await startTest(finalUrl, finalTask, allPersonas)
       router.push(`/test/${testId}`)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to start test')

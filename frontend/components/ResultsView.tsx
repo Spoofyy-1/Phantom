@@ -105,6 +105,7 @@ function ConfusionCard({ event, index }: { event: ConfusionEvent; index: number 
 
 function PersonaSummary({ result }: { result: PersonaResult }) {
   const [open, setOpen] = useState(false)
+  const isError = !result.success && result.steps_taken === 0
 
   return (
     <div className="rounded-2xl border border-[#1e1e2e] bg-[#111118] overflow-hidden">
@@ -120,6 +121,11 @@ function PersonaSummary({ result }: { result: PersonaResult }) {
               <span className="flex items-center gap-1 text-[11px] text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 rounded-full px-2 py-0.5">
                 <CheckCircle2 size={10} />
                 Completed
+              </span>
+            ) : isError ? (
+              <span className="flex items-center gap-1 text-[11px] text-orange-400 bg-orange-400/10 border border-orange-400/20 rounded-full px-2 py-0.5">
+                <AlertTriangle size={10} />
+                Error
               </span>
             ) : (
               <span className="flex items-center gap-1 text-[11px] text-red-400 bg-red-400/10 border border-red-400/20 rounded-full px-2 py-0.5">
@@ -154,22 +160,35 @@ function PersonaSummary({ result }: { result: PersonaResult }) {
 
 export function ResultsView({ results }: { results: TestResults }) {
   const { ux_score, succeeded, total_personas, top_issues, personas } = results
+  const allErrored = personas.length > 0 && personas.every(p => !p.success && p.steps_taken === 0)
 
   return (
     <div className="space-y-8 animate-slide-up">
       {/* Overall score */}
       <div className="rounded-2xl border border-[#1e1e2e] bg-[#111118] p-6">
-        <div className="flex items-center gap-6">
-          <ScoreRing score={ux_score} />
-          <div>
-            <p className="text-2xl font-bold text-[#e2e2f0]">UX Score</p>
-            <p className="text-[#8888aa] mt-1">
-              {succeeded}/{total_personas} personas completed the task
-              {' · '}
-              Avg confusion {results.avg_confusion.toFixed(1)}/10
-            </p>
+        {allErrored ? (
+          <div className="flex items-center gap-4">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-orange-500/10 border border-orange-500/20">
+              <AlertTriangle size={24} className="text-orange-400" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-[#e2e2f0]">Test Failed</p>
+              <p className="text-[#8888aa] mt-1">All personas encountered errors — check the details below</p>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex items-center gap-6">
+            <ScoreRing score={ux_score} />
+            <div>
+              <p className="text-2xl font-bold text-[#e2e2f0]">UX Score</p>
+              <p className="text-[#8888aa] mt-1">
+                {succeeded}/{total_personas} personas completed the task
+                {' · '}
+                Avg confusion {results.avg_confusion.toFixed(1)}/10
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Top friction points */}
