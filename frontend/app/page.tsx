@@ -2,43 +2,56 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, Globe, Loader2, Zap } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ArrowRight, Globe, Loader2, Sparkles, Users } from 'lucide-react'
 import { fetchArchetypes, startTest } from '@/lib/api'
 import { PersonaCard } from '@/components/PersonaCard'
 import { CustomPersonaBuilder } from '@/components/CustomPersonaBuilder'
 import type { Archetype, PersonaRef } from '@/types'
 
 const PRESET_TASKS = [
-  { label: 'Explore the site', value: 'Explore this website. Understand what it offers and find the main features.' },
-  { label: 'Sign up', value: 'Try to create a new account or sign up for this service.' },
-  { label: 'Find pricing', value: 'Find out how much this service costs and what plans are available.' },
-  { label: 'Contact support', value: 'Try to contact support or find help documentation.' },
-  { label: 'Make a purchase', value: 'Try to purchase a product or complete a checkout flow.' },
+  { label: 'Explore the site',  value: 'Explore this website. Understand what it offers and find the main features.' },
+  { label: 'Sign up',           value: 'Try to create a new account or sign up for this service.' },
+  { label: 'Find pricing',      value: 'Find out how much this service costs and what plans are available.' },
+  { label: 'Contact support',   value: 'Try to contact support or find help documentation.' },
+  { label: 'Make a purchase',   value: 'Try to purchase a product or complete a checkout flow.' },
 ]
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 24, filter: 'blur(6px)' },
+  show:   { opacity: 1, y: 0,  filter: 'blur(0px)', transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] } },
+}
+
+const stagger = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.08, delayChildren: 0.1 } },
+}
 
 export default function Home() {
   const router = useRouter()
-  const [archetypes, setArchetypes] = useState<Archetype[]>([])
+  const [archetypes, setArchetypes]       = useState<Archetype[]>([])
   const [customPersonas, setCustomPersonas] = useState<Array<Archetype & { system_prompt: string }>>([])
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [url, setUrl] = useState('')
-  const [task, setTask] = useState(PRESET_TASKS[0].value)
+  const [selectedIds, setSelectedIds]     = useState<Set<string>>(new Set())
+  const [url, setUrl]                     = useState('')
+  const [task, setTask]                   = useState(PRESET_TASKS[0].value)
   const [customTaskMode, setCustomTaskMode] = useState(false)
-  const [customTask, setCustomTask] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [customTask, setCustomTask]       = useState('')
+  const [loading, setLoading]             = useState(false)
+  const [error, setError]                 = useState<string | null>(null)
+  const [archetypesLoading, setArchetypesLoading] = useState(true)
 
   useEffect(() => {
     fetchArchetypes()
       .then(setArchetypes)
       .catch(() => setError('Backend offline — set NEXT_PUBLIC_API_URL and redeploy.'))
+      .finally(() => setArchetypesLoading(false))
   }, [])
 
   const togglePersona = useCallback((id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev)
-      if (next.has(id)) { next.delete(id) }
-      else if (next.size < 4) { next.add(id) }
+      if (next.has(id)) next.delete(id)
+      else if (next.size < 4) next.add(id)
       return next
     })
   }, [])
@@ -71,143 +84,273 @@ export default function Home() {
   }
 
   const allPersonas = [...archetypes, ...customPersonas]
-  const finalTask = customTaskMode ? customTask : task
-  const canRun = url.trim() && selectedIds.size > 0 && finalTask.trim() && !loading
+  const finalTask   = customTaskMode ? customTask : task
+  const canRun      = url.trim() && selectedIds.size > 0 && finalTask.trim() && !loading
 
   return (
-    <main className="min-h-screen bg-[#09090f]">
-      {/* Header — no logo, just wordmark */}
-      <header className="border-b border-[#1a1a2e] px-6 py-4">
-        <div className="mx-auto max-w-5xl flex items-center justify-between">
-          <span className="text-lg font-semibold tracking-tight text-white">Phantom</span>
-          <span className="text-xs text-[#444460] hidden sm:block">Synthetic user testing</span>
-        </div>
-      </header>
+    <>
+      {/* Background layers */}
+      <div className="orb orb-1" />
+      <div className="orb orb-2" />
+      <div className="orb orb-3" />
+      <div className="dot-grid" />
+      <div className="grain" />
 
-      <div className="mx-auto max-w-5xl px-6 py-14 space-y-14">
-
-        {/* Hero */}
-        <div className="text-center space-y-5">
-          <div className="inline-flex items-center gap-2 rounded-full border border-[#2a2a42] bg-[#111120] px-4 py-1.5 text-xs font-medium text-[#8888bb]">
-            <Zap size={11} className="text-purple-400" />
-            GPT-4o vision · Real browser automation
+      <main className="relative z-10 min-h-screen">
+        {/* ── Header ─────────────────────────────────────────────────── */}
+        <motion.header
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y:  0  }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          className="border-b border-white/[0.05] px-6 py-4 backdrop-blur-sm sticky top-0 z-50"
+          style={{ background: 'rgba(5,5,8,0.8)' }}
+        >
+          <div className="mx-auto max-w-5xl flex items-center justify-between">
+            <span className="text-lg font-bold tracking-tight text-white">Phantom</span>
+            <span className="text-xs text-white/20 hidden sm:block font-medium">Synthetic user testing</span>
           </div>
-          <h1 className="text-4xl sm:text-5xl font-bold text-white tracking-tight leading-[1.15]">
-            See your site through<br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-purple-400 to-pink-400">
-              different eyes
-            </span>
-          </h1>
-          <p className="text-[#6666aa] text-base max-w-lg mx-auto leading-relaxed">
-            AI agents with detailed cognitive models browse your site and report where real users get stuck.
-          </p>
-        </div>
+        </motion.header>
 
-        {/* URL */}
-        <section className="space-y-2">
-          <label className="text-sm font-medium text-[#ccccee]">Website URL</label>
-          <div className="relative">
-            <Globe size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444460]" />
-            <input
-              type="url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://your-website.com"
-              className="pl-10 h-12 rounded-xl border border-[#1e1e32] bg-[#0d0d18] text-white placeholder:text-[#444460] focus:border-purple-500 focus:outline-none w-full text-sm transition-colors"
-              onKeyDown={(e) => e.key === 'Enter' && canRun && handleRun()}
-            />
-          </div>
-        </section>
+        <div className="mx-auto max-w-5xl px-6 space-y-16 py-16">
 
-        {/* Task */}
-        <section className="space-y-3">
-          <label className="text-sm font-medium text-[#ccccee]">What should they try to do?</label>
-          <div className="flex flex-wrap gap-2">
-            {PRESET_TASKS.map((t) => (
-              <button
-                key={t.value}
-                onClick={() => { setTask(t.value); setCustomTaskMode(false) }}
-                className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-all ${
-                  !customTaskMode && task === t.value
-                    ? 'border-purple-500 bg-purple-500/15 text-purple-300'
-                    : 'border-[#1e1e32] text-[#666688] hover:border-[#2e2e4a] hover:text-[#ccccee]'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-            <button
-              onClick={() => setCustomTaskMode(true)}
-              className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-all ${
-                customTaskMode
-                  ? 'border-purple-500 bg-purple-500/15 text-purple-300'
-                  : 'border-[#1e1e32] text-[#666688] hover:border-[#2e2e4a] hover:text-[#ccccee]'
-              }`}
-            >
-              Custom…
-            </button>
-          </div>
-          {customTaskMode ? (
-            <input
-              type="text"
-              value={customTask}
-              onChange={(e) => setCustomTask(e.target.value)}
-              placeholder="Describe what the persona should try to accomplish…"
-              className="h-11 rounded-xl border border-[#1e1e32] bg-[#0d0d18] text-white placeholder:text-[#444460] focus:border-purple-500 focus:outline-none w-full px-4 text-sm transition-colors"
-              autoFocus
-            />
-          ) : (
-            <p className="text-xs text-[#444460] italic">"{task}"</p>
-          )}
-        </section>
-
-        {/* Persona grid */}
-        <section className="space-y-4">
-          <div className="flex items-baseline justify-between">
-            <div>
-              <label className="text-sm font-medium text-[#ccccee]">Choose personas</label>
-              <p className="text-xs text-[#444460] mt-0.5">Select up to 4 · {selectedIds.size} selected</p>
-            </div>
-            {selectedIds.size > 0 && (
-              <button onClick={() => setSelectedIds(new Set())} className="text-xs text-[#444460] hover:text-[#ccccee] transition-colors">
-                Clear all
-              </button>
-            )}
-          </div>
-
-          {error && (
-            <div className="rounded-xl border border-red-500/20 bg-red-500/8 px-4 py-3 text-sm text-red-400">
-              {error}
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {allPersonas.map((p) => (
-              <PersonaCard key={p.id} persona={p} selected={selectedIds.has(p.id)} onToggle={togglePersona} />
-            ))}
-            {selectedIds.size < 4 && (
-              <CustomPersonaBuilder onPersonaCreated={handleCustomPersona} />
-            )}
-          </div>
-        </section>
-
-        {/* CTA */}
-        <div className="flex flex-col items-center gap-3 pb-10">
-          <button
-            onClick={handleRun}
-            disabled={!canRun}
-            className="group flex items-center gap-3 rounded-2xl bg-purple-600 px-8 py-4 text-sm font-semibold text-white transition-all hover:bg-purple-500 hover:shadow-2xl hover:shadow-purple-500/20 disabled:opacity-25 disabled:cursor-not-allowed"
+          {/* ── Hero ──────────────────────────────────────────────────── */}
+          <motion.section
+            variants={stagger}
+            initial="hidden"
+            animate="show"
+            className="text-center space-y-6"
           >
-            {loading ? (
-              <><Loader2 size={16} className="animate-spin" />Starting…</>
-            ) : (
-              <><span>Run Phantom Test</span><ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" /></>
-            )}
-          </button>
-          <p className="text-xs text-[#333350]">~3–8 min per persona · Screenshots at every step</p>
-        </div>
+            <motion.div variants={fadeUp}>
+              <span className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium"
+                style={{ background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(124,58,237,0.25)', color: '#c084fc' }}>
+                <span className="h-1.5 w-1.5 rounded-full bg-purple-400 animate-pulse" />
+                GPT-4o vision · Real browser automation
+              </span>
+            </motion.div>
 
-      </div>
-    </main>
+            <motion.h1 variants={fadeUp} className="text-5xl sm:text-6xl font-black tracking-tight leading-[1.1] text-white">
+              See your site through<br />
+              <span className="gradient-text">different eyes</span>
+            </motion.h1>
+
+            <motion.p variants={fadeUp} className="text-base sm:text-lg max-w-md mx-auto leading-relaxed" style={{ color: 'rgba(255,255,255,0.38)' }}>
+              AI agents with real cognitive models browse your site and report exactly where different kinds of users get stuck.
+            </motion.p>
+          </motion.section>
+
+          {/* ── URL ───────────────────────────────────────────────────── */}
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y:  0 }}
+            transition={{ duration: 0.55, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            className="space-y-2.5"
+          >
+            <label className="text-sm font-semibold text-white/60 uppercase tracking-wider">Website URL</label>
+            <div className="relative">
+              <Globe size={15} className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'rgba(255,255,255,0.2)' }} />
+              <input
+                type="url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://your-website.com"
+                className="input-phantom pl-10 h-14 text-base"
+                onKeyDown={(e) => e.key === 'Enter' && canRun && handleRun()}
+              />
+            </div>
+          </motion.section>
+
+          {/* ── Task ──────────────────────────────────────────────────── */}
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y:  0 }}
+            transition={{ duration: 0.55, delay: 0.45, ease: [0.22, 1, 0.36, 1] }}
+            className="space-y-4"
+          >
+            <label className="text-sm font-semibold text-white/60 uppercase tracking-wider">What should they try to do?</label>
+            <div className="flex flex-wrap gap-2">
+              {PRESET_TASKS.map((t) => (
+                <motion.button
+                  key={t.value}
+                  onClick={() => { setTask(t.value); setCustomTaskMode(false) }}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="rounded-full px-4 py-2 text-sm font-medium border transition-all duration-200"
+                  style={!customTaskMode && task === t.value ? {
+                    background: 'rgba(124,58,237,0.2)',
+                    borderColor: 'rgba(124,58,237,0.5)',
+                    color: '#c084fc',
+                    boxShadow: '0 0 16px rgba(124,58,237,0.15)',
+                  } : {
+                    background: 'rgba(255,255,255,0.03)',
+                    borderColor: 'rgba(255,255,255,0.08)',
+                    color: 'rgba(255,255,255,0.45)',
+                  }}
+                >
+                  {t.label}
+                </motion.button>
+              ))}
+              <motion.button
+                onClick={() => setCustomTaskMode(true)}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                className="rounded-full px-4 py-2 text-sm font-medium border transition-all duration-200"
+                style={customTaskMode ? {
+                  background: 'rgba(124,58,237,0.2)',
+                  borderColor: 'rgba(124,58,237,0.5)',
+                  color: '#c084fc',
+                } : {
+                  background: 'rgba(255,255,255,0.03)',
+                  borderColor: 'rgba(255,255,255,0.08)',
+                  color: 'rgba(255,255,255,0.45)',
+                }}
+              >
+                Custom…
+              </motion.button>
+            </div>
+
+            <AnimatePresence mode="wait">
+              {customTaskMode ? (
+                <motion.input
+                  key="custom"
+                  type="text"
+                  value={customTask}
+                  onChange={(e) => setCustomTask(e.target.value)}
+                  placeholder="Describe what the persona should try to accomplish…"
+                  className="input-phantom h-12"
+                  autoFocus
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y:  0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.2 }}
+                />
+              ) : (
+                <motion.p
+                  key="preview"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="text-xs italic px-1"
+                  style={{ color: 'rgba(255,255,255,0.2)' }}
+                >
+                  "{task}"
+                </motion.p>
+              )}
+            </AnimatePresence>
+          </motion.section>
+
+          {/* ── Personas ──────────────────────────────────────────────── */}
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y:  0 }}
+            transition={{ duration: 0.55, delay: 0.55, ease: [0.22, 1, 0.36, 1] }}
+            className="space-y-5"
+          >
+            <div className="flex items-end justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Users size={14} style={{ color: 'rgba(255,255,255,0.3)' }} />
+                  <label className="text-sm font-semibold text-white/60 uppercase tracking-wider">Choose personas</label>
+                </div>
+                <p className="text-xs pl-5" style={{ color: 'rgba(255,255,255,0.2)' }}>
+                  Select up to 4 · <span style={{ color: selectedIds.size > 0 ? '#c084fc' : undefined }}>{selectedIds.size} selected</span>
+                </p>
+              </div>
+              <AnimatePresence>
+                {selectedIds.size > 0 && (
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    onClick={() => setSelectedIds(new Set())}
+                    className="text-xs transition-colors"
+                    style={{ color: 'rgba(255,255,255,0.25)' }}
+                    whileHover={{ color: 'rgba(255,255,255,0.7)' } as never}
+                  >
+                    Clear all
+                  </motion.button>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <AnimatePresence>
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="rounded-xl px-4 py-3 text-sm text-red-400 overflow-hidden"
+                  style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}
+                >
+                  {error}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Loading skeleton */}
+            {archetypesLoading && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="shimmer rounded-2xl h-40" style={{ animationDelay: `${i * 0.1}s` }} />
+                ))}
+              </div>
+            )}
+
+            {!archetypesLoading && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {allPersonas.map((p, i) => (
+                  <PersonaCard
+                    key={p.id}
+                    persona={p}
+                    selected={selectedIds.has(p.id)}
+                    onToggle={togglePersona}
+                    index={i}
+                  />
+                ))}
+                {selectedIds.size < 4 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.45, delay: allPersonas.length * 0.055, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <CustomPersonaBuilder onPersonaCreated={handleCustomPersona} />
+                  </motion.div>
+                )}
+              </div>
+            )}
+          </motion.section>
+
+          {/* ── CTA ───────────────────────────────────────────────────── */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y:  0 }}
+            transition={{ duration: 0.55, delay: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            className="flex flex-col items-center gap-4 pb-16"
+          >
+            <motion.button
+              onClick={handleRun}
+              disabled={!canRun}
+              whileHover={canRun ? { scale: 1.03 } : {}}
+              whileTap={canRun ? { scale: 0.97 } : {}}
+              className="glow-btn relative flex items-center gap-3 rounded-2xl px-10 py-4 text-[15px] font-bold text-white transition-all disabled:opacity-20 disabled:cursor-not-allowed"
+              style={{ transition: 'box-shadow 0.3s, transform 0.15s' }}
+            >
+              {loading ? (
+                <><Loader2 size={17} className="animate-spin" />Starting test…</>
+              ) : (
+                <>
+                  <Sparkles size={17} />
+                  Run Phantom Test
+                  <ArrowRight size={17} />
+                </>
+              )}
+            </motion.button>
+            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.15)' }}>
+              ~3–8 min per persona · GPT-4o · Screenshots at every step
+            </p>
+          </motion.div>
+
+        </div>
+      </main>
+    </>
   )
 }

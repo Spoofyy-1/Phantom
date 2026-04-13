@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Sparkles, Loader2, Plus } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Sparkles, Loader2, Plus, X } from 'lucide-react'
 import { expandPersona } from '@/lib/api'
 import type { Archetype } from '@/types'
 
@@ -9,18 +10,18 @@ interface Props {
   onPersonaCreated: (persona: Archetype & { system_prompt: string }) => void
 }
 
-export function CustomPersonaBuilder({ onPersonaCreated }: Props) {
-  const [open, setOpen] = useState(false)
-  const [description, setDescription] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+const EXAMPLES = [
+  'A visually impaired nurse using her phone on break',
+  'Retired veteran, 68, first time using online banking',
+  'Mandarin-speaking student, limited English',
+  'Busy startup founder who speed-reads everything',
+]
 
-  const examples = [
-    'A visually impaired nurse who uses her phone during 10-minute breaks',
-    'A retired veteran, 68, first time using online banking',
-    'A Mandarin-speaking student, limited English, trying to sign up',
-    'A busy startup founder who speed-reads and hates friction',
-  ]
+export function CustomPersonaBuilder({ onPersonaCreated }: Props) {
+  const [open, setOpen]           = useState(false)
+  const [description, setDescription] = useState('')
+  const [loading, setLoading]     = useState(false)
+  const [error, setError]         = useState<string | null>(null)
 
   const handleBuild = async () => {
     if (!description.trim() || loading) return
@@ -40,94 +41,119 @@ export function CustomPersonaBuilder({ onPersonaCreated }: Props) {
 
   if (!open) {
     return (
-      <button
+      <motion.button
         onClick={() => setOpen(true)}
-        className="w-full rounded-2xl border border-dashed border-[#2a2a3e] bg-[#0d0d14] p-5 text-left transition-all hover:border-purple-500/40 hover:bg-[#111118] group"
+        whileHover={{ y: -2 }}
+        whileTap={{ scale: 0.97 }}
+        className="group w-full rounded-2xl p-5 text-left h-full min-h-[160px] flex items-center transition-colors duration-200"
+        style={{
+          background: 'rgba(255,255,255,0.015)',
+          border: '1px dashed rgba(255,255,255,0.1)',
+        }}
       >
-        <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#2a2a3e] bg-[#111118] group-hover:border-purple-500/40 transition-colors">
-            <Plus size={18} className="text-[#555570] group-hover:text-purple-400 transition-colors" />
-          </span>
+        <div className="flex items-center gap-3 w-full">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl transition-colors duration-200"
+            style={{ background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.2)' }}>
+            <Plus size={18} style={{ color: 'rgba(192,132,252,0.6)' }} />
+          </div>
           <div>
-            <p className="text-sm font-medium text-[#8888aa] group-hover:text-[#e2e2f0] transition-colors">
+            <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.5)' }}>
               Build a custom persona
             </p>
-            <p className="text-xs text-[#444455] mt-0.5">Describe your user — AI fills in the rest</p>
+            <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.2)' }}>
+              Describe your user — AI fills in the rest
+            </p>
           </div>
         </div>
-      </button>
+      </motion.button>
     )
   }
 
   return (
-    <div className="rounded-2xl border border-purple-500/30 bg-[#111118] p-5 animate-fade-in">
-      <div className="flex items-center gap-2 mb-4">
-        <Sparkles size={16} className="text-purple-400" />
-        <span className="text-sm font-semibold text-[#e2e2f0]">Custom Persona Builder</span>
-      </div>
-
-      <p className="text-xs text-[#8888aa] mb-3">
-        Describe your persona briefly — Claude will generate a full cognitive model.
-      </p>
-
-      {/* Example chips */}
-      <div className="flex flex-wrap gap-1.5 mb-3">
-        {examples.map((ex) => (
-          <button
-            key={ex}
-            onClick={() => setDescription(ex)}
-            className="text-[11px] px-2 py-1 rounded-lg border border-[#1e1e2e] text-[#555570] hover:border-purple-500/30 hover:text-purple-400 transition-colors"
-          >
-            {ex.slice(0, 40)}…
-          </button>
-        ))}
-      </div>
-
-      <textarea
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        placeholder="e.g. A visually impaired nurse who uses her phone on break and relies on VoiceOver"
-        rows={3}
-        maxLength={500}
-        className="w-full resize-none mb-1"
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleBuild()
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.97, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.97, y: 8 }}
+        transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+        className="rounded-2xl p-5 space-y-4"
+        style={{
+          background: 'rgba(124,58,237,0.06)',
+          border: '1px solid rgba(124,58,237,0.25)',
+          boxShadow: '0 0 32px rgba(124,58,237,0.08)',
         }}
-      />
-      <p className="text-[11px] text-[#444455] text-right mb-3">{description.length}/500</p>
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sparkles size={14} style={{ color: '#c084fc' }} />
+            <span className="text-sm font-semibold text-white">Custom Persona</span>
+          </div>
+          <button onClick={() => { setOpen(false); setDescription(''); setError(null) }}
+            className="rounded-lg p-1 transition-colors"
+            style={{ color: 'rgba(255,255,255,0.3)' }}>
+            <X size={14} />
+          </button>
+        </div>
 
-      {error && (
-        <p className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2 mb-3">
-          {error}
-        </p>
-      )}
+        {/* Example chips */}
+        <div className="flex flex-wrap gap-1.5">
+          {EXAMPLES.map((ex) => (
+            <button
+              key={ex}
+              onClick={() => setDescription(ex)}
+              className="text-[11px] px-2.5 py-1 rounded-full transition-all duration-150"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.35)' }}
+            >
+              {ex.slice(0, 36)}…
+            </button>
+          ))}
+        </div>
 
-      <div className="flex items-center gap-2">
-        <button
+        {/* Input */}
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="e.g. A visually impaired nurse who uses VoiceOver on break"
+          rows={3}
+          maxLength={500}
+          className="input-phantom resize-none text-sm"
+          onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleBuild() }}
+          style={{ borderRadius: '12px' }}
+        />
+        <div className="flex justify-between items-center">
+          <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.2)' }}>{description.length}/500 · ⌘↵ to build</span>
+        </div>
+
+        <AnimatePresence>
+          {error && (
+            <motion.p
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="text-xs text-red-400 rounded-lg px-3 py-2 overflow-hidden"
+              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}
+            >
+              {error}
+            </motion.p>
+          )}
+        </AnimatePresence>
+
+        <motion.button
           onClick={handleBuild}
           disabled={!description.trim() || loading}
-          className="flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-purple-500 disabled:opacity-40 disabled:cursor-not-allowed"
+          whileHover={!loading ? { scale: 1.02 } : {}}
+          whileTap={!loading ? { scale: 0.97 } : {}}
+          className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+          style={{ background: loading ? 'rgba(124,58,237,0.4)' : 'rgba(124,58,237,0.8)' }}
         >
           {loading ? (
-            <>
-              <Loader2 size={14} className="animate-spin" />
-              Building persona…
-            </>
+            <><Loader2 size={14} className="animate-spin" />Building persona…</>
           ) : (
-            <>
-              <Sparkles size={14} />
-              Build with AI
-            </>
+            <><Sparkles size={14} />Build with AI</>
           )}
-        </button>
-        <button
-          onClick={() => { setOpen(false); setDescription(''); setError(null) }}
-          className="px-4 py-2 text-sm text-[#555570] hover:text-[#e2e2f0] transition-colors"
-        >
-          Cancel
-        </button>
-        <span className="ml-auto text-[11px] text-[#444455]">⌘↵ to build</span>
-      </div>
-    </div>
+        </motion.button>
+      </motion.div>
+    </AnimatePresence>
   )
 }
