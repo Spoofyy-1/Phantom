@@ -34,8 +34,6 @@ export default function Home() {
   const [selectedIds, setSelectedIds]     = useState<Set<string>>(new Set())
   const [url, setUrl]                     = useState('')
   const [task, setTask]                   = useState(PRESET_TASKS[0].value)
-  const [customTaskMode, setCustomTaskMode] = useState(false)
-  const [customTask, setCustomTask]       = useState('')
   const [loading, setLoading]             = useState(false)
   const [error, setError]                 = useState<string | null>(null)
   const [archetypesLoading, setArchetypesLoading] = useState(true)
@@ -66,8 +64,7 @@ export default function Home() {
   }
 
   const handleRun = async () => {
-    const finalTask = customTaskMode ? customTask : task
-    if (!url.trim() || selectedIds.size === 0 || !finalTask.trim()) return
+    if (!url.trim() || selectedIds.size === 0 || !task.trim()) return
     setLoading(true)
     setError(null)
     try {
@@ -81,7 +78,7 @@ export default function Home() {
         const custom = customPersonas.find((p) => p.id === id)
         return custom ? { id, custom_persona: custom } : { id }
       })
-      const testId = await startTest(finalUrl, finalTask, allPersonas)
+      const testId = await startTest(finalUrl, task, allPersonas)
       router.push(`/test/${testId}`)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to start test')
@@ -90,8 +87,7 @@ export default function Home() {
   }
 
   const allPersonas = [...archetypes, ...customPersonas]
-  const finalTask   = customTaskMode ? customTask : task
-  const canRun      = url.trim() && selectedIds.size > 0 && finalTask.trim() && !loading
+  const canRun      = url.trim() && selectedIds.size > 0 && task.trim() && !loading
 
   return (
     <>
@@ -170,78 +166,44 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y:  0 }}
             transition={{ duration: 0.55, delay: 0.45, ease: [0.22, 1, 0.36, 1] }}
-            className="space-y-4"
+            className="space-y-3"
           >
             <label className="text-sm font-semibold text-white/60 uppercase tracking-wider">What should they try to do?</label>
+
+            {/* Direct text input */}
+            <input
+              type="text"
+              value={task}
+              onChange={(e) => setTask(e.target.value)}
+              placeholder="e.g. Try to sign up for an account and complete onboarding"
+              className="input-phantom h-12"
+              onKeyDown={(e) => e.key === 'Enter' && canRun && handleRun()}
+            />
+
+            {/* Preset quick-fill chips */}
             <div className="flex flex-wrap gap-2">
               {PRESET_TASKS.map((t) => (
                 <motion.button
                   key={t.value}
-                  onClick={() => { setTask(t.value); setCustomTaskMode(false) }}
+                  onClick={() => setTask(t.value)}
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
-                  className="rounded-full px-4 py-2 text-sm font-medium border transition-all duration-200"
-                  style={!customTaskMode && task === t.value ? {
+                  className="rounded-full px-3 py-1.5 text-xs font-medium border transition-all duration-200"
+                  style={task === t.value ? {
                     background: 'rgba(124,58,237,0.2)',
                     borderColor: 'rgba(124,58,237,0.5)',
                     color: '#c084fc',
-                    boxShadow: '0 0 16px rgba(124,58,237,0.15)',
+                    boxShadow: '0 0 12px rgba(124,58,237,0.15)',
                   } : {
                     background: 'rgba(255,255,255,0.03)',
                     borderColor: 'rgba(255,255,255,0.08)',
-                    color: 'rgba(255,255,255,0.45)',
+                    color: 'rgba(255,255,255,0.35)',
                   }}
                 >
                   {t.label}
                 </motion.button>
               ))}
-              <motion.button
-                onClick={() => setCustomTaskMode(true)}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                className="rounded-full px-4 py-2 text-sm font-medium border transition-all duration-200"
-                style={customTaskMode ? {
-                  background: 'rgba(124,58,237,0.2)',
-                  borderColor: 'rgba(124,58,237,0.5)',
-                  color: '#c084fc',
-                } : {
-                  background: 'rgba(255,255,255,0.03)',
-                  borderColor: 'rgba(255,255,255,0.08)',
-                  color: 'rgba(255,255,255,0.45)',
-                }}
-              >
-                Custom…
-              </motion.button>
             </div>
-
-            <AnimatePresence mode="wait">
-              {customTaskMode ? (
-                <motion.input
-                  key="custom"
-                  type="text"
-                  value={customTask}
-                  onChange={(e) => setCustomTask(e.target.value)}
-                  placeholder="Describe what the persona should try to accomplish…"
-                  className="input-phantom h-12"
-                  autoFocus
-                  initial={{ opacity: 0, y: -8 }}
-                  animate={{ opacity: 1, y:  0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.2 }}
-                />
-              ) : (
-                <motion.p
-                  key="preview"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="text-xs italic px-1"
-                  style={{ color: 'rgba(255,255,255,0.2)' }}
-                >
-                  "{task}"
-                </motion.p>
-              )}
-            </AnimatePresence>
           </motion.section>
 
           {/* ── Personas ──────────────────────────────────────────────── */}
