@@ -1,14 +1,16 @@
 # Official Microsoft Playwright image — Python 3.11 + Chromium pre-installed.
-# No manual apt-get dependency hunting needed.
+# Build context is the repo ROOT (Railway scans from there).
 FROM mcr.microsoft.com/playwright/python:v1.44.0-jammy
 
 WORKDIR /app
 
-COPY requirements.txt .
+# Copy deps first for layer caching
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+# Copy all backend source
+COPY backend/ .
 
 EXPOSE 8000
-# $PORT is injected by Railway at runtime; fall back to 8000 locally.
+# $PORT is injected by Railway; fall back to 8000 locally.
 CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}
