@@ -45,6 +45,13 @@ Action type rules:
 - "give_up": cannot complete — set reason explaining exactly where you got stuck
 
 confusion_score: integer 0-10 (0 = no confusion, 10 = completely stuck)
+
+CRITICAL RULES:
+- You MUST take a different action each step. Never repeat the same action twice in a row.
+- If you have been scrolling, stop scrolling and CLICK something instead.
+- If you want to explore a page, CLICK its links — do not just describe what you see.
+- "scroll" should only be used to reveal content that is not yet visible. Use it at most twice before clicking.
+- Prioritise navigating to new pages over staying on the current one.
 """
 
 
@@ -130,9 +137,31 @@ async def run_persona_session(
     try:
         await session.start(url)
 
+        url_history: list[str] = []  # track recent URLs to detect loops
+        same_url_streak = 0
+
         for step in range(MAX_STEPS):
             state = await session.get_page_state()
             elements_text = _format_elements(state["elements"])
+
+            # Anti-loop: track how many consecutive steps on the same URL
+            current_url = state["url"]
+            if url_history and url_history[-1] == current_url:
+                same_url_streak += 1
+            else:
+                same_url_streak = 0
+            url_history.append(current_url)
+
+            # Build a nudge message if stuck on same page too long
+            loop_nudge = ""
+            if same_url_streak >= 4:
+                visited = list(dict.fromkeys(url_history))  # unique, ordered
+                loop_nudge = (
+                    f"\n\nWARNING: You have been on this same page for {same_url_streak} steps "
+                    f"without navigating away. You MUST click a link or button that takes you to "
+                    f"a NEW page this step. Do NOT scroll or describe the page again. "
+                    f"Pages visited so far: {', '.join(visited[-5:])}"
+                )
 
             # Current step user content — screenshot + text
             current_user_content = [
@@ -151,6 +180,7 @@ async def run_persona_session(
                         f"Interactive elements visible on screen:\n{elements_text}\n\n"
                         f"Your task: {task}\n\n"
                         f"Step {step + 1} of {MAX_STEPS}. What do you do next?"
+                        f"{loop_nudge}"
                     ),
                 },
             ]
