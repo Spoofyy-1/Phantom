@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { AlertTriangle, CheckCircle2, XCircle, ChevronDown, ChevronUp, Image as ImageIcon, Lightbulb, FileText } from 'lucide-react'
-import type { TestResults, PersonaResult, ConfusionEvent } from '@/types'
+import { AlertTriangle, CheckCircle2, XCircle, ChevronDown, ChevronUp, Image as ImageIcon, Lightbulb, FileText, BarChart3 } from 'lucide-react'
+import type { TestResults, PersonaResult, ConfusionEvent, UXDimensions } from '@/types'
 import clsx from 'clsx'
 
 function ScoreRing({ score }: { score: number }) {
@@ -207,6 +207,44 @@ function PersonaSummary({ result }: { result: PersonaResult }) {
   )
 }
 
+const DIMENSION_META: Array<{ key: keyof UXDimensions; label: string; desc: string; color: string }> = [
+  { key: 'task_success',          label: 'Task Success',          desc: 'Did personas complete the task?',           color: '#10b981' },
+  { key: 'efficiency',            label: 'Efficiency',            desc: 'How many steps did it take?',               color: '#6366f1' },
+  { key: 'clarity',               label: 'Clarity',               desc: 'How confused were personas?',               color: '#f59e0b' },
+  { key: 'error_recovery',        label: 'Error Recovery',        desc: 'Could confused personas still finish?',     color: '#ec4899' },
+  { key: 'friction_distribution', label: 'Friction Spread',       desc: 'Was friction isolated or widespread?',      color: '#14b8a6' },
+]
+
+function DimensionBar({ label, desc, score, color, delay }: { label: string; desc: string; score: number; color: string; delay: number }) {
+  const [width, setWidth] = useState(0)
+  useEffect(() => {
+    const t = setTimeout(() => setWidth(score * 10), delay)
+    return () => clearTimeout(t)
+  }, [score, delay])
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <div>
+          <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{label}</span>
+          <span className="text-xs ml-2" style={{ color: 'var(--text-tertiary)' }}>{desc}</span>
+        </div>
+        <span className="text-sm font-bold tabular-nums" style={{ color }}>{score.toFixed(1)}</span>
+      </div>
+      <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--bg-tertiary)' }}>
+        <div
+          className="h-full rounded-full"
+          style={{
+            width: `${width}%`,
+            background: `linear-gradient(90deg, ${color}, ${color}cc)`,
+            transition: 'width 1s cubic-bezier(0.22,1,0.36,1)',
+          }}
+        />
+      </div>
+    </div>
+  )
+}
+
 const GRADE_LABEL: Record<string, string> = {
   A: 'Excellent', B: 'Good', C: 'Needs Work', D: 'Poor', F: 'Critical Issues',
 }
@@ -262,6 +300,33 @@ export function ResultsView({ results }: { results: TestResults }) {
           </div>
         )}
       </div>
+
+      {/* Dimension breakdown */}
+      {!allErrored && results.dimensions && (
+        <div className="rounded-2xl p-6 space-y-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)' }}>
+          <div className="flex items-center gap-2">
+            <BarChart3 size={15} className="text-purple-400" />
+            <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>UX Dimensions</h2>
+            {results.low_confidence && (
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-400/10 text-amber-400 border border-amber-400/20 ml-auto">
+                Low confidence — use 3+ personas
+              </span>
+            )}
+          </div>
+          <div className="space-y-4">
+            {DIMENSION_META.map((dim, i) => (
+              <DimensionBar
+                key={dim.key}
+                label={dim.label}
+                desc={dim.desc}
+                score={results.dimensions[dim.key]}
+                color={dim.color}
+                delay={300 + i * 150}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* AI Summary */}
       {summary && (

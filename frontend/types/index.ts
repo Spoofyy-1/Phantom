@@ -54,6 +54,14 @@ export interface StepEvent {
   screenshot: string
 }
 
+export interface UXDimensions {
+  task_success: number
+  efficiency: number
+  clarity: number
+  error_recovery: number
+  friction_distribution: number
+}
+
 export interface TestResults {
   test_id: string
   url: string
@@ -64,6 +72,8 @@ export interface TestResults {
   ux_score: number
   grade: string
   avg_confusion: number
+  dimensions: UXDimensions
+  low_confidence: boolean
   top_issues: ConfusionEvent[]
   summary: string
   recommendations: string[]

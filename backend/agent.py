@@ -394,11 +394,99 @@ async def run_persona_session(
 
 
 def _grade(score: float) -> str:
-    if score >= 9:   return "A"
-    if score >= 7:   return "B"
-    if score >= 5:   return "C"
-    if score >= 3:   return "D"
+    if score >= 9.0: return "A"
+    if score >= 8.0: return "B"
+    if score >= 6.5: return "C"
+    if score >= 4.0: return "D"
     return "F"
+
+
+import math
+
+def _compute_dimensions(persona_results: list[dict]) -> dict:
+    """
+    Compute 5 UX dimensions (each 0-10) based on established UX methodologies:
+    - Task Success (HEART framework)
+    - Efficiency (time-on-task / KLM)
+    - Clarity (confusion severity + frequency)
+    - Error Recovery (Nielsen heuristic #9)
+    - Friction Distribution (consistency heuristic)
+    """
+    total = len(persona_results)
+    if total == 0:
+        return {
+            "task_success": 0, "efficiency": 0, "clarity": 10,
+            "error_recovery": 10, "friction_distribution": 10, "overall": 0,
+        }
+
+    active = [r for r in persona_results if r["steps_taken"] > 0]
+    succeeded = sum(1 for r in persona_results if r["success"])
+
+    # ── 1. Task Success: completion rate ────────────────────────────
+    task_success = 10.0 * (succeeded / total)
+
+    # ── 2. Efficiency: steps relative to optimal ────────────────────
+    if active:
+        steps = [r["steps_taken"] for r in active]
+        optimal = min(steps) if len(steps) > 1 else max(5, steps[0] * 0.6)
+        avg_steps = sum(steps) / len(steps)
+        efficiency = 10.0 * max(0.0, 1.0 - (avg_steps - optimal) / max(optimal, 1))
+        efficiency = min(10.0, max(0.0, efficiency))
+    else:
+        efficiency = 0.0
+
+    # ── 3. Clarity: penalise severity × frequency with log curve ───
+    clarity_scores = []
+    for r in active:
+        events = r["confusion_events"]
+        if not events:
+            clarity_scores.append(10.0)
+        else:
+            avg_sev = sum(e["confusion_score"] for e in events) / len(events)
+            penalty = avg_sev * math.log2(len(events) + 1)
+            clarity_scores.append(max(0.0, 10.0 - min(10.0, penalty)))
+    clarity = sum(clarity_scores) / len(clarity_scores) if clarity_scores else 10.0
+
+    # ── 4. Error Recovery: confused personas who still completed ────
+    confused_personas = [r for r in active if len(r["confusion_events"]) > 0]
+    if confused_personas:
+        recovered = sum(1 for r in confused_personas if r["success"])
+        error_recovery = 10.0 * (recovered / len(confused_personas))
+    else:
+        error_recovery = 10.0  # no confusion = perfect recovery
+
+    # ── 5. Friction Distribution: how widespread is confusion ──────
+    if total > 0:
+        confused_count = sum(1 for r in persona_results if len(r.get("confusion_events", [])) > 0)
+        friction_dist = 10.0 * (1.0 - confused_count / total)
+    else:
+        friction_dist = 10.0
+
+    # ── Overall: weighted combination ──────────────────────────────
+    overall = (
+        0.30 * task_success +
+        0.20 * efficiency +
+        0.25 * clarity +
+        0.10 * error_recovery +
+        0.15 * friction_dist
+    )
+
+    # Edge case: if nobody completed the task, cap at 3.0
+    if succeeded == 0 and total > 0:
+        overall = min(overall, 3.0)
+
+    # Single persona: flag low confidence
+    low_confidence = total < 3
+
+    return {
+        "task_success": round(task_success, 1),
+        "efficiency": round(efficiency, 1),
+        "clarity": round(clarity, 1),
+        "error_recovery": round(error_recovery, 1),
+        "friction_distribution": round(friction_dist, 1),
+        "overall": round(overall, 1),
+        "low_confidence": low_confidence,
+    }
 
 
 async def _generate_summary(
@@ -481,26 +569,25 @@ async def run_test(
     total_personas = len(persona_results)
     succeeded = sum(1 for r in persona_results if r["success"])
 
-    # Exclude errored personas (0 steps) from confusion average so they don't
-    # inflate the score — only count personas that actually browsed.
-    active = [r for r in persona_results if r["steps_taken"] > 0]
-    avg_confusion = (
-        sum(r["total_confusion_score"] for r in active) / len(active)
-        if active else 0
-    )
+    # Compute 5-dimension scoring
+    dimensions = _compute_dimensions(persona_results)
+    ux_score = dimensions["overall"]
 
-    # Weighted score: 60% completion rate + 40% confusion score
-    completion_score = (succeeded / total_personas * 10) if total_personas > 0 else 0
-    confusion_score  = max(0.0, 10.0 - avg_confusion)
-    ux_score = round(0.6 * completion_score + 0.4 * confusion_score, 1)
-
+    # Collect top confusion events across all personas
     all_confusion = []
     for r in persona_results:
         for ce in r["confusion_events"]:
             all_confusion.append({**ce, "persona_name": r["persona_name"]})
     all_confusion.sort(key=lambda x: x["confusion_score"], reverse=True)
 
-    # Generate AI summary (non-blocking — falls back to empty strings on failure)
+    # Avg confusion for display
+    active = [r for r in persona_results if r["steps_taken"] > 0]
+    avg_confusion = (
+        sum(r["total_confusion_score"] for r in active) / len(active)
+        if active else 0
+    )
+
+    # Generate AI summary
     client = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
     ai_feedback = await _generate_summary(client, url, task, persona_results, ux_score)
 
@@ -514,6 +601,14 @@ async def run_test(
         "ux_score": ux_score,
         "grade": _grade(ux_score),
         "avg_confusion": round(avg_confusion, 1),
+        "dimensions": {
+            "task_success": dimensions["task_success"],
+            "efficiency": dimensions["efficiency"],
+            "clarity": dimensions["clarity"],
+            "error_recovery": dimensions["error_recovery"],
+            "friction_distribution": dimensions["friction_distribution"],
+        },
+        "low_confidence": dimensions["low_confidence"],
         "top_issues": all_confusion[:5],
         "summary": ai_feedback["summary"],
         "recommendations": ai_feedback["recommendations"],
