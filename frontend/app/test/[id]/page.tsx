@@ -6,6 +6,7 @@ import {
   ArrowLeft, CheckCircle2, XCircle, Loader2, Circle,
   AlertTriangle, RefreshCw, ChevronRight
 } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { subscribeToTest, getTestResults, respondToQuestion } from '@/lib/api'
 import { ResultsView } from '@/components/ResultsView'
 import type { LiveEvent, TestResults, PersonaResult } from '@/types'
@@ -44,7 +45,10 @@ function statusDot(status: PersonaLive['status']) {
 // ─── Browser chrome wrapper ───────────────────────────────────────────────────
 function BrowserFrame({ url, screenshot, loading }: { url: string; screenshot: string | null; loading: boolean }) {
   return (
-    <div className="rounded-2xl border border-[#1e1e32] overflow-hidden bg-[#0a0a14] shadow-2xl shadow-black/40">
+    <div className={clsx(
+      "rounded-2xl border border-[#1e1e32] overflow-hidden bg-[#0a0a14] transition-shadow duration-500",
+      loading ? "shadow-[0_0_40px_rgba(124,58,237,0.15)]" : "shadow-2xl shadow-black/40"
+    )}>
       {/* Chrome bar */}
       <div className="flex items-center gap-3 px-4 py-3 bg-[#111120] border-b border-[#1a1a2e]">
         <div className="flex gap-1.5">
@@ -99,7 +103,18 @@ function ThoughtBubble({ persona, thought, action, confusionScore, step }: {
         <span className="text-xs font-medium text-[#ccccee]">{persona.name} is thinking…</span>
         {step > 0 && <span className="ml-auto text-[11px] text-[#444460]">step {step}</span>}
       </div>
-      <p className="text-sm text-[#8888bb] italic leading-relaxed">"{thought}"</p>
+      <AnimatePresence mode="wait">
+        <motion.p
+          key={thought}
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -4 }}
+          transition={{ duration: 0.2 }}
+          className="text-sm text-[#8888bb] italic leading-relaxed"
+        >
+          &quot;{thought}&quot;
+        </motion.p>
+      </AnimatePresence>
       {action && action !== 'done' && action !== 'give_up' && (
         <div className="flex items-center gap-2 pt-1">
           <ChevronRight size={12} className="text-[#444460]" />
@@ -137,7 +152,7 @@ function EventFeed({ feed }: { feed: PersonaLive['feed'] }) {
         {feed.map((f, i) => {
           const confColor = f.confusion >= 7 ? '#ef4444' : f.confusion >= 4 ? '#f59e0b' : 'transparent'
           return (
-            <div key={i} className="flex items-start gap-2.5 px-2 py-2 rounded-lg hover:bg-[#111120] transition-colors">
+            <div key={i} className="flex items-start gap-2.5 px-2 py-2 rounded-lg hover:bg-[#111120] transition-colors animate-slide-in-right">
               <span className="text-[11px] text-[#333350] tabular-nums mt-0.5 shrink-0 w-6 text-right">{f.step}</span>
               <p className="text-xs text-[#666688] leading-relaxed flex-1 min-w-0 truncate">{f.thought}</p>
               {f.confusion >= 4 && (
@@ -357,7 +372,7 @@ export default function TestPage() {
                 key={p.id}
                 onClick={() => setActiveTab(p.id)}
                 className={clsx(
-                  'flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all shrink-0',
+                  'relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all shrink-0',
                   activeTab === p.id
                     ? 'bg-[#111120] text-white border border-[#2a2a42]'
                     : 'text-[#555570] hover:text-[#ccccee] hover:bg-[#0d0d18]'
@@ -366,6 +381,13 @@ export default function TestPage() {
                 <span className="text-base leading-none">{p.avatar}</span>
                 <span>{p.name.split(' ')[0]}</span>
                 {statusDot(p.status)}
+                {activeTab === p.id && (
+                  <motion.div
+                    layoutId="tab-indicator"
+                    className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-purple-500"
+                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                  />
+                )}
               </button>
             ))}
           </div>
@@ -452,8 +474,10 @@ export default function TestPage() {
                         key={p.id}
                         onClick={() => setActiveTab(p.id)}
                         className={clsx(
-                          'w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-left',
-                          activeTab === p.id ? 'bg-[#111120]' : 'hover:bg-[#111120]'
+                          'w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 text-left',
+                          activeTab === p.id
+                            ? 'bg-[#111120] border-l-2 border-purple-500'
+                            : 'hover:bg-[#111120]/60 border-l-2 border-transparent'
                         )}
                       >
                         <span className="text-lg leading-none">{p.avatar}</span>

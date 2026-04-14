@@ -76,11 +76,10 @@ export function CustomPersonaBuilder({ onPersonaCreated }: Props) {
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.97, y: 8 }}
         transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-        className="rounded-2xl p-5 space-y-4"
+        className="rounded-2xl p-5 space-y-4 breathing-glow"
         style={{
           background: 'rgba(124,58,237,0.06)',
           border: '1px solid rgba(124,58,237,0.25)',
-          boxShadow: '0 0 32px rgba(124,58,237,0.08)',
         }}
       >
         {/* Header */}
@@ -99,14 +98,16 @@ export function CustomPersonaBuilder({ onPersonaCreated }: Props) {
         {/* Example chips */}
         <div className="flex flex-wrap gap-1.5">
           {EXAMPLES.map((ex) => (
-            <button
+            <motion.button
               key={ex}
               onClick={() => setDescription(ex)}
+              whileHover={{ scale: 1.05, y: -1 }}
+              whileTap={{ scale: 0.95 }}
               className="text-[11px] px-2.5 py-1 rounded-full transition-all duration-150"
               style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.35)' }}
             >
               {ex.slice(0, 36)}…
-            </button>
+            </motion.button>
           ))}
         </div>
 
@@ -142,8 +143,9 @@ export function CustomPersonaBuilder({ onPersonaCreated }: Props) {
         <motion.button
           onClick={handleBuild}
           disabled={!description.trim() || loading}
-          whileHover={!loading ? { scale: 1.02 } : {}}
-          whileTap={!loading ? { scale: 0.97 } : {}}
+          whileHover={!loading ? { scale: 1.04 } : {}}
+          whileTap={!loading ? { scale: 0.96 } : {}}
+          transition={{ type: 'spring', stiffness: 400, damping: 20 }}
           className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
           style={{ background: loading ? 'rgba(124,58,237,0.4)' : 'rgba(124,58,237,0.8)' }}
         >

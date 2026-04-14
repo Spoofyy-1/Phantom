@@ -34,14 +34,14 @@ html, body {
 .orb-1 {
   width: 700px; height: 700px;
   top: -200px; left: -200px;
-  background: radial-gradient(circle, rgba(109, 40, 217, 0.10) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(109, 40, 217, 0.12) 0%, transparent 70%);
   animation: drift1 22s ease-in-out infinite;
 }
 
 .orb-2 {
   width: 600px; height: 600px;
   bottom: -100px; right: -100px;
-  background: radial-gradient(circle, rgba(219, 39, 119, 0.07) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(219, 39, 119, 0.09) 0%, transparent 70%);
   animation: drift2 28s ease-in-out infinite;
 }
 
@@ -88,17 +88,18 @@ html, body {
 
 /* ─── Animated gradient text ────────────────────────────────────────────── */
 .gradient-text {
-  background: linear-gradient(135deg, #c084fc 0%, #818cf8 30%, #a855f7 60%, #ec4899 100%);
-  background-size: 300% 300%;
+  background: linear-gradient(135deg, #c084fc 0%, #818cf8 25%, #a855f7 50%, #ec4899 75%, #c084fc 100%);
+  background-size: 400% 400%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  animation: gradient-pan 6s ease infinite;
+  animation: gradient-shift 8s ease infinite;
 }
 
-@keyframes gradient-pan {
-  0%, 100% { background-position: 0% 50%; }
-  50%       { background-position: 100% 50%; }
+@keyframes gradient-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 /* ─── Glass card ────────────────────────────────────────────────────────── */
@@ -134,6 +135,10 @@ html, body {
 
 .glow-btn:hover {
   box-shadow: 0 0 32px rgba(124, 58, 237, 0.5), 0 0 64px rgba(124, 58, 237, 0.2);
+}
+
+.glow-btn:not(:disabled):hover {
+  animation: pulse-ring 1.5s ease-out infinite;
 }
 
 .glow-btn:hover::before { opacity: 1; }
@@ -212,3 +217,59 @@ html, body {
 /* ─── Scrollbar hide utility ────────────────────────────────────────────── */
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ─── Fade-in-up animation ─────────────────────────────────────────────── */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(16px); filter: blur(4px); }
+  to   { opacity: 1; transform: translateY(0);    filter: blur(0); }
+}
+
+.animate-fade-in-up { animation: fade-in-up 0.6s ease-out both; }
+
+.delay-1 { animation-delay: 0.1s; }
+.delay-2 { animation-delay: 0.2s; }
+.delay-3 { animation-delay: 0.3s; }
+.delay-4 { animation-delay: 0.4s; }
+.delay-5 { animation-delay: 0.5s; }
+
+/* ─── Pulse ring for glow button ───────────────────────────────────────── */
+@keyframes pulse-ring {
+  from { box-shadow: 0 0 0 0 rgba(124,58,237,0.4); }
+  to   { box-shadow: 0 0 0 20px rgba(124,58,237,0); }
+}
+
+/* ─── Card hover lift ──────────────────────────────────────────────────── */
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.06);
+}
+
+/* ─── Breathing glow for custom persona builder ────────────────────────── */
+@keyframes breathing-glow {
+  0%, 100% { box-shadow: 0 0 24px rgba(124,58,237,0.08); }
+  50%      { box-shadow: 0 0 40px rgba(124,58,237,0.16); }
+}
+
+.breathing-glow {
+  animation: breathing-glow 3s ease-in-out infinite;
+}
+
+/* ─── Score ring animation ─────────────────────────────────────────────── */
+@keyframes score-ring-fill {
+  from { stroke-dashoffset: var(--circ); }
+  to   { stroke-dashoffset: var(--target-offset); }
+}
+
+/* ─── Slide-in-right for event feed ────────────────────────────────────── */
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out both;
+}

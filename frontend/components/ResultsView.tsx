@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { AlertTriangle, CheckCircle2, XCircle, ChevronDown, ChevronUp, Image as ImageIcon, Lightbulb, FileText } from 'lucide-react'
 import type { TestResults, PersonaResult, ConfusionEvent } from '@/types'
 import clsx from 'clsx'
@@ -11,6 +12,38 @@ function ScoreRing({ score }: { score: number }) {
   const pct = score / 10
   const dashOffset = circ * (1 - pct)
   const color = score >= 7 ? '#10b981' : score >= 4 ? '#f59e0b' : '#ef4444'
+
+  const [displayScore, setDisplayScore] = useState(0)
+  const [animatedOffset, setAnimatedOffset] = useState(circ)
+
+  useEffect(() => {
+    // Animate the ring stroke after mount
+    const timer = setTimeout(() => {
+      setAnimatedOffset(dashOffset)
+    }, 300)
+
+    // Animate the score count-up
+    const duration = 1000
+    const startTime = Date.now() + 300
+    let raf: number
+    const tick = () => {
+      const elapsed = Date.now() - startTime
+      if (elapsed < 0) {
+        raf = requestAnimationFrame(tick)
+        return
+      }
+      const progress = Math.min(elapsed / duration, 1)
+      const eased = 1 - Math.pow(1 - progress, 3) // ease-out cubic
+      setDisplayScore(score * eased)
+      if (progress < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+
+    return () => {
+      clearTimeout(timer)
+      cancelAnimationFrame(raf)
+    }
+  }, [score, dashOffset, circ])
 
   return (
     <div className="relative inline-flex items-center justify-center">
@@ -24,13 +57,13 @@ function ScoreRing({ score }: { score: number }) {
           stroke={color}
           strokeWidth={5}
           strokeDasharray={circ}
-          strokeDashoffset={dashOffset}
+          strokeDashoffset={animatedOffset}
           strokeLinecap="round"
-          style={{ transition: 'stroke-dashoffset 1s ease' }}
+          style={{ transition: 'stroke-dashoffset 1s cubic-bezier(0.22,1,0.36,1) 0.3s' }}
         />
       </svg>
       <span className="absolute text-xl font-bold" style={{ color }}>
-        {score.toFixed(1)}
+        {displayScore.toFixed(1)}
       </span>
     </div>
   )
@@ -77,28 +110,38 @@ function ConfusionCard({ event, index }: { event: ConfusionEvent; index: number 
         )}
       </button>
 
-      {expanded && (
-        <div className="border-t border-[#1e1e2e] p-4 space-y-3">
-          <div className="rounded-lg bg-[#111118] border border-[#1e1e2e] p-3">
-            <p className="text-xs text-[#555570] mb-1">Internal thought</p>
-            <p className="text-sm text-[#8888aa] italic">"{event.thought}"</p>
-          </div>
-          {event.screenshot && (
-            <div className="rounded-lg overflow-hidden border border-[#1e1e2e]">
-              <div className="flex items-center gap-2 px-3 py-2 bg-[#111118] border-b border-[#1e1e2e]">
-                <ImageIcon size={12} className="text-[#555570]" />
-                <span className="text-[11px] text-[#555570]">Screenshot at confusion point</span>
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="border-t border-[#1e1e2e] p-4 space-y-3">
+              <div className="rounded-lg bg-[#111118] border border-[#1e1e2e] p-3">
+                <p className="text-xs text-[#555570] mb-1">Internal thought</p>
+                <p className="text-sm text-[#8888aa] italic">&quot;{event.thought}&quot;</p>
               </div>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={`data:image/png;base64,${event.screenshot}`}
-                alt="Screenshot at confusion point"
-                className="w-full"
-              />
+              {event.screenshot && (
+                <div className="rounded-lg overflow-hidden border border-[#1e1e2e]">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-[#111118] border-b border-[#1e1e2e]">
+                    <ImageIcon size={12} className="text-[#555570]" />
+                    <span className="text-[11px] text-[#555570]">Screenshot at confusion point</span>
+                  </div>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`data:image/png;base64,${event.screenshot}`}
+                    alt="Screenshot at confusion point"
+                    className="w-full"
+                  />
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
@@ -108,7 +151,7 @@ function PersonaSummary({ result }: { result: PersonaResult }) {
   const isError = !result.success && result.steps_taken === 0
 
   return (
-    <div className="rounded-2xl border border-[#1e1e2e] bg-[#111118] overflow-hidden">
+    <div className="rounded-2xl border border-[#1e1e2e] bg-[#111118] overflow-hidden hover:-translate-y-0.5 transition-transform duration-200">
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center gap-3 p-5 text-left hover:bg-[#0d0d14] transition-colors"
@@ -188,12 +231,15 @@ export function ResultsView({ results }: { results: TestResults }) {
           <div className="flex items-center gap-6 flex-wrap">
             <ScoreRing score={ux_score} />
             {/* Grade badge */}
-            <div
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 25, delay: 0.5 }}
               className="flex flex-col items-center justify-center h-16 w-16 rounded-2xl font-black text-2xl border"
               style={{ color: gradeColor, background: `${gradeColor}15`, borderColor: `${gradeColor}30` }}
             >
               {grade}
-            </div>
+            </motion.div>
             <div>
               <div className="flex items-center gap-2">
                 <p className="text-2xl font-bold text-[#e2e2f0]">UX Score</p>
@@ -231,7 +277,7 @@ export function ResultsView({ results }: { results: TestResults }) {
           </div>
           <ul className="space-y-2">
             {recommendations.map((rec, i) => (
-              <li key={i} className="flex items-start gap-3">
+              <li key={i} className={`flex items-start gap-3 animate-fade-in-up delay-${Math.min(i + 1, 5)}`}>
                 <span
                   className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-black"
                   style={{ backgroundColor: '#f59e0b' }}

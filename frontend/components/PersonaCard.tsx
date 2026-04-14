@@ -38,12 +38,20 @@ export function PersonaCard({ persona, selected, onToggle, index = 0 }: Props) {
         style={{ background: `radial-gradient(circle at 50% 0%, ${persona.color}10, transparent 70%)` }}
       />
 
+      {/* Shimmer/shine sweep on hover */}
+      <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
+        <div
+          className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out"
+          style={{ background: 'linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.05) 50%, transparent 70%)' }}
+        />
+      </div>
+
       {/* Selected checkmark */}
       {selected && (
         <motion.span
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+          transition={{ type: 'spring', stiffness: 500, damping: 25 }}
           className="absolute top-3.5 right-3.5 flex h-5 w-5 items-center justify-center rounded-full"
           style={{ background: persona.color }}
         >
@@ -80,9 +88,12 @@ export function PersonaCard({ persona, selected, onToggle, index = 0 }: Props) {
 
       {/* Traits */}
       <div className="flex flex-wrap gap-1.5">
-        {persona.traits.slice(0, 3).map((trait) => (
-          <span
+        {persona.traits.slice(0, 3).map((trait, i) => (
+          <motion.span
             key={trait}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3, delay: index * 0.055 + i * 0.06, ease: [0.22, 1, 0.36, 1] }}
             className="rounded-full px-2.5 py-0.5 text-[11px] font-medium tracking-wide"
             style={{
               background: `${persona.color}12`,
@@ -91,7 +102,7 @@ export function PersonaCard({ persona, selected, onToggle, index = 0 }: Props) {
             }}
           >
             {trait}
-          </span>
+          </motion.span>
         ))}
         {persona.traits.length > 3 && (
           <span className="rounded-full px-2.5 py-0.5 text-[11px] text-[#3a3a60] border border-white/5">
