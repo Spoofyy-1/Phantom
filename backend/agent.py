@@ -96,12 +96,14 @@ def _parse_action(raw: str) -> Optional[dict]:
 def _build_openai_messages(system_prompt: str, history: list[dict], current_user_content: list) -> list[dict]:
     """
     Build the OpenAI messages list.
-    System goes first. For history, strip images from older turns to save tokens —
-    only the current (latest) user message keeps its screenshot.
+    System goes first. Keep only last 16 history messages to prevent context bloat.
+    Strip images from older turns — only current message keeps its screenshot.
     """
     result = [{"role": "system", "content": system_prompt}]
+    # Trim history to last 16 messages (8 turn pairs) to keep context focused
+    trimmed = history[-16:] if len(history) > 16 else history
 
-    for msg in history:
+    for msg in trimmed:
         if msg["role"] == "user" and isinstance(msg["content"], list):
             # Strip images from historical user messages
             text_only = [c for c in msg["content"] if c.get("type") == "text"]
@@ -159,6 +161,7 @@ async def run_persona_session(
 
         url_history: list[str] = []  # track recent URLs to detect loops
         same_url_streak = 0
+        recent_actions: list[str] = []  # track last few actions to detect repetition
 
         for step in range(MAX_STEPS):
             state = await session.get_page_state()
@@ -181,6 +184,16 @@ async def run_persona_session(
                     f"without navigating away. You MUST click a link or button that takes you to "
                     f"a NEW page this step. Do NOT scroll or describe the page again. "
                     f"Pages visited so far: {', '.join(visited[-5:])}"
+                )
+
+            # Repetition detection — if last 3 actions are identical, force change
+            if len(recent_actions) >= 3 and len(set(recent_actions[-3:])) == 1:
+                repeated = recent_actions[-1]
+                loop_nudge += (
+                    f"\n\nSTUCK ALERT: You have repeated '{repeated}' for 3 steps in a row. "
+                    f"This is NOT working. You MUST try a completely different approach: "
+                    f"use navigate to go to a different URL directly, use click_text with different text, "
+                    f"or use back to go to a previous page. Do NOT repeat '{repeated}'."
                 )
 
             # Step-budget pacing nudges
@@ -234,6 +247,11 @@ async def run_persona_session(
 
             parsed = _parse_action(raw_reply)
             if not parsed:
+                # Bad JSON — inject a hint and retry next step
+                history.append({
+                    "role": "user",
+                    "content": [{"type": "text", "text": "Your last response was not valid JSON. Please respond with ONLY a JSON object matching the schema."}],
+                })
                 continue
 
             action = parsed.get("action", {})
@@ -258,6 +276,10 @@ async def run_persona_session(
 
             events.append(step_event)
             await on_event(step_event)
+
+            # Track action for repetition detection
+            action_sig = f"{action_type}:{action.get('element_id') or action.get('text') or action.get('direction') or ''}"
+            recent_actions.append(action_sig)
 
             if confusion and confusion_score >= 4:
                 confusion_events.append({
@@ -311,26 +333,46 @@ async def run_persona_session(
                             "step": step + 1,
                         })
 
-            # Execute action
+            # Execute action and track success
+            action_succeeded = True
+            action_feedback = ""
             try:
                 if action_type == "click":
                     eid = action.get("element_id")
                     if eid:
-                        await session.click_element(int(eid))
+                        result_ok = await session.click_element(int(eid))
+                        if not result_ok:
+                            action_succeeded = False
+                            action_feedback = f"Click on element [{eid}] FAILED — element may not exist or is not clickable. Try click_text with the visible text instead."
+                    else:
+                        action_succeeded = False
+                        action_feedback = "No element_id provided for click action."
                 elif action_type == "click_text":
                     txt = action.get("text", "")
                     if txt:
-                        await session.click_by_text(txt)
+                        result_ok = await session.click_by_text(txt)
+                        if not result_ok:
+                            action_succeeded = False
+                            action_feedback = f"click_text '{txt}' FAILED — no element with that text found. Try a different text or use navigate with a direct URL."
+                    else:
+                        action_succeeded = False
+                        action_feedback = "No text provided for click_text action."
                 elif action_type == "type":
                     text = action.get("text", "")
                     if text:
                         await session.type_text(str(text))
+                    else:
+                        action_succeeded = False
+                        action_feedback = "No text provided for type action."
                 elif action_type == "scroll":
                     await session.scroll(action.get("direction", "down"))
                 elif action_type == "navigate":
                     nav_url = action.get("url", "")
                     if nav_url:
                         await session.navigate(nav_url)
+                    else:
+                        action_succeeded = False
+                        action_feedback = "No URL provided for navigate action."
                 elif action_type == "back":
                     await session.go_back()
                 elif action_type == "ask_user":
@@ -354,8 +396,16 @@ async def run_persona_session(
                     })
                 elif action_type == "press_enter":
                     await session.press_key("Enter")
-            except Exception:
-                pass
+            except Exception as e:
+                action_succeeded = False
+                action_feedback = f"Action '{action_type}' threw an error: {str(e)[:100]}. Try a different approach."
+
+            # Inject action feedback into history so the agent learns what happened
+            if not action_succeeded and action_feedback:
+                history.append({
+                    "role": "user",
+                    "content": [{"type": "text", "text": f"ACTION RESULT: {action_feedback}"}],
+                })
 
             # Emit a post-action screenshot so the live view updates immediately
             if action_type not in ("done", "give_up", "ask_user"):
