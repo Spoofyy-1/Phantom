@@ -23,12 +23,10 @@ function ScoreRing({ score }: { score: number }) {
   const [animatedOffset, setAnimatedOffset] = useState(circ)
 
   useEffect(() => {
-    // Animate the ring stroke after mount
     const timer = setTimeout(() => {
       setAnimatedOffset(dashOffset)
     }, 300)
 
-    // Animate the score count-up
     const duration = 1000
     const startTime = Date.now() + 300
     let raf: number
@@ -39,7 +37,7 @@ function ScoreRing({ score }: { score: number }) {
         return
       }
       const progress = Math.min(elapsed / duration, 1)
-      const eased = 1 - Math.pow(1 - progress, 3) // ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3)
       setDisplayScore(score * eased)
       if (progress < 1) raf = requestAnimationFrame(tick)
     }
@@ -263,9 +261,11 @@ export function ResultsView({ results }: { results: TestResults }) {
   const allErrored = personas.length > 0 && personas.every(p => !p.success && p.steps_taken === 0)
   const gradeColor = GRADE_COLOR[grade] ?? '#6366f1'
 
+  const [activeResultTab, setActiveResultTab] = useState<'overview' | 'analysis' | 'accessibility' | 'reports'>('overview')
+
   return (
     <div className="space-y-8 animate-slide-up">
-      {/* Overall score */}
+      {/* Overall score — always visible */}
       <div className="rounded-2xl p-6" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)' }}>
         {allErrored ? (
           <div className="flex items-center gap-4">
@@ -280,7 +280,6 @@ export function ResultsView({ results }: { results: TestResults }) {
         ) : (
           <div className="flex items-center gap-6 flex-wrap">
             <ScoreRing score={ux_score} />
-            {/* Grade badge */}
             <motion.div
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -307,112 +306,172 @@ export function ResultsView({ results }: { results: TestResults }) {
         )}
       </div>
 
-      {/* Dimension breakdown */}
-      {!allErrored && results.dimensions && (
-        <div className="rounded-2xl p-6 space-y-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)' }}>
-          <div className="flex items-center gap-2">
-            <BarChart3 size={15} className="text-purple-400" />
-            <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>UX Dimensions</h2>
-            {results.low_confidence && (
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-400/10 text-amber-400 border border-amber-400/20 ml-auto">
-                Low confidence — use 3+ personas
-              </span>
-            )}
-          </div>
-          <div className="space-y-4">
-            {DIMENSION_META.map((dim, i) => (
-              <DimensionBar
-                key={dim.key}
-                label={dim.label}
-                desc={dim.desc}
-                score={results.dimensions[dim.key]}
-                color={dim.color}
-                delay={300 + i * 150}
-              />
+      {/* Tab bar — only shown when not allErrored */}
+      {!allErrored && (
+        <>
+          <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'var(--bg-tertiary)' }}>
+            {[
+              { id: 'overview' as const, label: 'Overview' },
+              { id: 'analysis' as const, label: 'Analysis' },
+              { id: 'accessibility' as const, label: 'Accessibility' },
+              { id: 'reports' as const, label: 'Reports' },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveResultTab(tab.id)}
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                style={activeResultTab === tab.id ? {
+                  background: 'var(--bg-card)',
+                  color: 'var(--text-primary)',
+                  boxShadow: 'var(--shadow-sm)',
+                } : {
+                  color: 'var(--text-tertiary)',
+                }}
+              >
+                {tab.label}
+              </button>
             ))}
           </div>
-        </div>
+
+          {/* === Overview Tab === */}
+          {activeResultTab === 'overview' && (
+            <div className="space-y-8">
+              {/* Dimension breakdown */}
+              {results.dimensions && (
+                <div className="rounded-2xl p-6 space-y-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)' }}>
+                  <div className="flex items-center gap-2">
+                    <BarChart3 size={15} className="text-purple-400" />
+                    <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>UX Dimensions</h2>
+                    {results.low_confidence && (
+                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-400/10 text-amber-400 border border-amber-400/20 ml-auto">
+                        Low confidence — use 3+ personas
+                      </span>
+                    )}
+                  </div>
+                  <div className="space-y-4">
+                    {DIMENSION_META.map((dim, i) => (
+                      <DimensionBar
+                        key={dim.key}
+                        label={dim.label}
+                        desc={dim.desc}
+                        score={results.dimensions[dim.key]}
+                        color={dim.color}
+                        delay={300 + i * 150}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* AI Summary */}
+              {summary && (
+                <div className="rounded-2xl p-6 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)' }}>
+                  <div className="flex items-center gap-2">
+                    <FileText size={15} className="text-purple-400" />
+                    <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Assessment</h2>
+                  </div>
+                  <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{summary}</p>
+                </div>
+              )}
+
+              {/* Recommendations */}
+              {recommendations && recommendations.length > 0 && (
+                <div className="rounded-2xl p-6 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)' }}>
+                  <div className="flex items-center gap-2">
+                    <Lightbulb size={15} className="text-amber-400" />
+                    <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Recommendations</h2>
+                  </div>
+                  <ul className="space-y-2">
+                    {recommendations.map((rec, i) => (
+                      <li key={i} className={`flex items-start gap-3 animate-fade-in-up delay-${Math.min(i + 1, 5)}`}>
+                        <span
+                          className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-black"
+                          style={{ backgroundColor: '#f59e0b' }}
+                        >
+                          {i + 1}
+                        </span>
+                        <p className="text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>{rec}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Export */}
+              <ExportButton results={results} />
+            </div>
+          )}
+
+          {/* === Analysis Tab === */}
+          {activeResultTab === 'analysis' && (
+            <div className="space-y-8">
+              {/* Heatmap */}
+              {personas.some(p => (p.click_points ?? []).length > 0) && (
+                <Heatmap personas={personas} />
+              )}
+
+              {/* Sentiment Timeline */}
+              <SentimentTimeline personas={personas} />
+
+              {/* Navigation Funnel */}
+              <FunnelView personas={personas} />
+
+              {/* Persona Conflicts */}
+              <ConflictDetector personas={personas} />
+            </div>
+          )}
+
+          {/* === Accessibility Tab === */}
+          {activeResultTab === 'accessibility' && (
+            <div className="space-y-8">
+              <AccessibilityReport personas={personas} />
+            </div>
+          )}
+
+          {/* === Reports Tab === */}
+          {activeResultTab === 'reports' && (
+            <div className="space-y-8">
+              {/* Top friction points */}
+              {top_issues.length > 0 && (
+                <section>
+                  <div className="flex items-center gap-2 mb-4">
+                    <AlertTriangle size={16} className="text-amber-400" />
+                    <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Top Friction Points</h2>
+                    <span className="text-xs ml-auto" style={{ color: 'var(--text-tertiary)' }}>Sorted by severity</span>
+                  </div>
+                  <div className="space-y-3">
+                    {top_issues.map((issue, i) => (
+                      <ConfusionCard key={i} event={issue} index={i} />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Per-persona breakdown */}
+              <section>
+                <h2 className="text-base font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Persona Reports</h2>
+                <div className="space-y-3">
+                  {personas.map((result) => (
+                    <PersonaSummary key={result.persona_id} result={result} />
+                  ))}
+                </div>
+              </section>
+            </div>
+          )}
+        </>
       )}
 
-      {/* Heatmap */}
-      {personas.some(p => (p.click_points ?? []).length > 0) && (
-        <Heatmap personas={personas} />
-      )}
-
-      {/* AI Summary */}
-      {summary && (
-        <div className="rounded-2xl p-6 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)' }}>
-          <div className="flex items-center gap-2">
-            <FileText size={15} className="text-purple-400" />
-            <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Assessment</h2>
-          </div>
-          <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{summary}</p>
-        </div>
-      )}
-
-      {/* Recommendations */}
-      {recommendations && recommendations.length > 0 && (
-        <div className="rounded-2xl p-6 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)' }}>
-          <div className="flex items-center gap-2">
-            <Lightbulb size={15} className="text-amber-400" />
-            <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Recommendations</h2>
-          </div>
-          <ul className="space-y-2">
-            {recommendations.map((rec, i) => (
-              <li key={i} className={`flex items-start gap-3 animate-fade-in-up delay-${Math.min(i + 1, 5)}`}>
-                <span
-                  className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-black"
-                  style={{ backgroundColor: '#f59e0b' }}
-                >
-                  {i + 1}
-                </span>
-                <p className="text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>{rec}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Accessibility Report */}
-      <AccessibilityReport personas={personas} />
-
-      {/* Navigation Funnel */}
-      <FunnelView personas={personas} />
-
-      {/* Sentiment Timeline */}
-      <SentimentTimeline personas={personas} />
-
-      {/* Persona Conflicts */}
-      <ConflictDetector personas={personas} />
-
-      {/* Top friction points */}
-      {top_issues.length > 0 && (
+      {/* If allErrored, show persona reports directly (no tabs) */}
+      {allErrored && (
         <section>
-          <div className="flex items-center gap-2 mb-4">
-            <AlertTriangle size={16} className="text-amber-400" />
-            <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Top Friction Points</h2>
-            <span className="text-xs ml-auto" style={{ color: 'var(--text-tertiary)' }}>Sorted by severity</span>
-          </div>
+          <h2 className="text-base font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Persona Reports</h2>
           <div className="space-y-3">
-            {top_issues.map((issue, i) => (
-              <ConfusionCard key={i} event={issue} index={i} />
+            {personas.map((result) => (
+              <PersonaSummary key={result.persona_id} result={result} />
             ))}
           </div>
         </section>
       )}
-
-      {/* Per-persona breakdown */}
-      <section>
-        <h2 className="text-base font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Persona Reports</h2>
-        <div className="space-y-3">
-          {personas.map((result) => (
-            <PersonaSummary key={result.persona_id} result={result} />
-          ))}
-        </div>
-      </section>
-
-      {/* Export */}
-      <ExportButton results={results} />
     </div>
   )
 }

@@ -95,13 +95,42 @@ function ThoughtBubble({ persona, thought, action, confusionScore, step }: {
 }) {
   if (!thought) return null
   const confColor = confusionScore >= 7 ? '#ef4444' : confusionScore >= 4 ? '#f59e0b' : '#10b981'
+  const isHighConfusion = confusionScore >= 7
 
   return (
     <div className="rounded-xl p-4 space-y-3"
-      style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)' }}>
+      style={{
+        background: `linear-gradient(90deg, ${persona.color}08, transparent 40%)`,
+        border: '1px solid var(--border-primary)',
+        borderLeft: `3px solid ${persona.color || 'var(--accent)'}`,
+      }}>
+      <style>{`
+        @keyframes blink-cursor {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
+        @keyframes thinking-dots {
+          0%, 20% { opacity: 0.2; }
+          50% { opacity: 1; }
+          80%, 100% { opacity: 0.2; }
+        }
+      `}</style>
       <div className="flex items-center gap-2">
         <span className="text-base">{persona.avatar}</span>
-        <span className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>{persona.name} is thinking…</span>
+        <span className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>{persona.name} is thinking</span>
+        {/* Animated thinking dots */}
+        <span className="flex gap-0.5 items-center">
+          {[0, 1, 2].map(i => (
+            <span
+              key={i}
+              className="inline-block h-1 w-1 rounded-full"
+              style={{
+                background: persona.color || 'var(--accent)',
+                animation: `thinking-dots 1.4s ease-in-out ${i * 0.2}s infinite`,
+              }}
+            />
+          ))}
+        </span>
         {step > 0 && <span className="ml-auto text-[11px]" style={{ color: 'var(--text-tertiary)' }}>step {step}</span>}
       </div>
       <AnimatePresence mode="wait">
@@ -115,6 +144,12 @@ function ThoughtBubble({ persona, thought, action, confusionScore, step }: {
           style={{ color: 'var(--text-secondary)' }}
         >
           &quot;{thought}&quot;
+          <span
+            className="inline-block ml-0.5 text-purple-400"
+            style={{ animation: 'blink-cursor 1s step-end infinite' }}
+          >
+            &#9610;
+          </span>
         </motion.p>
       </AnimatePresence>
       {action && action !== 'done' && action !== 'give_up' && (
@@ -122,7 +157,17 @@ function ThoughtBubble({ persona, thought, action, confusionScore, step }: {
           <ChevronRight size={12} style={{ color: 'var(--text-tertiary)' }} />
           <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{action}</span>
           {confusionScore > 0 && (
-            <span className="ml-auto text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ color: confColor, backgroundColor: `${confColor}15` }}>
+            <span
+              className={clsx(
+                'ml-auto font-medium rounded-full',
+                isHighConfusion ? 'text-sm px-3 py-1 font-bold' : 'text-[11px] px-2 py-0.5'
+              )}
+              style={{
+                color: confColor,
+                backgroundColor: `${confColor}${isHighConfusion ? '25' : '15'}`,
+                border: isHighConfusion ? `1px solid ${confColor}40` : 'none',
+              }}
+            >
               confused {confusionScore}/10
             </span>
           )}

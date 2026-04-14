@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Check } from 'lucide-react'
 import type { Archetype } from '@/types'
@@ -13,6 +14,21 @@ interface Props {
 }
 
 export function PersonaCard({ persona, selected, onToggle, index = 0 }: Props) {
+  const [expanded, setExpanded] = useState(false)
+  const prevSelected = useRef(selected)
+  const [showBorderFlash, setShowBorderFlash] = useState(false)
+
+  useEffect(() => {
+    if (selected && !prevSelected.current) {
+      setShowBorderFlash(true)
+      const t = setTimeout(() => setShowBorderFlash(false), 600)
+      return () => clearTimeout(t)
+    }
+    prevSelected.current = selected
+  }, [selected])
+
+  const needsTruncation = persona.short_desc.length > 90
+
   return (
     <motion.button
       onClick={() => onToggle(persona.id)}
@@ -27,15 +43,38 @@ export function PersonaCard({ persona, selected, onToggle, index = 0 }: Props) {
           ? `linear-gradient(135deg, ${persona.color}12, ${persona.color}06)`
           : 'var(--bg-card)',
         border: `1px solid ${selected ? persona.color + '55' : 'var(--border-primary)'}`,
-        boxShadow: selected
-          ? `0 0 0 1px ${persona.color}30, 0 8px 32px ${persona.color}18, inset 0 1px 0 ${persona.color}20`
-          : 'var(--shadow-card)',
+        boxShadow: showBorderFlash
+          ? `0 0 0 2px ${persona.color}80, 0 0 20px ${persona.color}40, 0 8px 32px ${persona.color}18`
+          : selected
+            ? `0 0 0 1px ${persona.color}30, 0 8px 32px ${persona.color}18, inset 0 1px 0 ${persona.color}20`
+            : 'var(--shadow-card)',
+        transition: 'box-shadow 0.6s cubic-bezier(0.22,1,0.36,1), border-color 0.3s ease',
       }}
     >
+      <style>{`
+        @keyframes borderGlow {
+          0% { box-shadow: 0 0 0 2px ${persona.color}80, 0 0 20px ${persona.color}40; }
+          100% { box-shadow: 0 0 0 1px ${persona.color}30, 0 8px 32px ${persona.color}18; }
+        }
+      `}</style>
+
       {/* Hover glow overlay */}
       <div
         className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
         style={{ background: `radial-gradient(circle at 50% 0%, ${persona.color}10, transparent 70%)` }}
+      />
+
+      {/* Animated gradient border on hover */}
+      <div
+        className="absolute inset-[-1px] rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+        style={{
+          background: `linear-gradient(135deg, ${persona.color}40, transparent 40%, transparent 60%, ${persona.color}40)`,
+          mask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+          maskComposite: 'exclude',
+          WebkitMaskComposite: 'xor',
+          padding: '1px',
+          borderRadius: '1rem',
+        }}
       />
 
       {/* Shimmer/shine sweep on hover */}
@@ -46,12 +85,17 @@ export function PersonaCard({ persona, selected, onToggle, index = 0 }: Props) {
         />
       </div>
 
-      {/* Selected checkmark */}
+      {/* Selected checkmark with bounce overshoot */}
       {selected && (
         <motion.span
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+          transition={{
+            type: 'spring',
+            stiffness: 600,
+            damping: 15,
+            mass: 0.8,
+          }}
           className="absolute top-3.5 right-3.5 flex h-5 w-5 items-center justify-center rounded-full"
           style={{ background: persona.color }}
         >
@@ -81,34 +125,57 @@ export function PersonaCard({ persona, selected, onToggle, index = 0 }: Props) {
         </div>
       </div>
 
-      {/* Short desc */}
-      <p className="text-[13px] leading-relaxed mb-3.5 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>
-        {persona.short_desc}
-      </p>
-
-      {/* Traits */}
-      <div className="flex flex-wrap gap-1.5">
-        {persona.traits.slice(0, 3).map((trait, i) => (
-          <motion.span
-            key={trait}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3, delay: index * 0.055 + i * 0.06, ease: [0.22, 1, 0.36, 1] }}
-            className="rounded-full px-2.5 py-0.5 text-[11px] font-medium tracking-wide"
-            style={{
-              background: `${persona.color}12`,
-              color: `${persona.color}cc`,
-              border: `1px solid ${persona.color}20`,
+      {/* Short desc with expandable "Read more" */}
+      <div className="mb-3.5">
+        <p
+          className={clsx('text-[13px] leading-relaxed', !expanded && needsTruncation && 'line-clamp-2')}
+          style={{ color: 'var(--text-secondary)' }}
+        >
+          {persona.short_desc}
+        </p>
+        {needsTruncation && (
+          <span
+            className="text-[11px] font-medium cursor-pointer mt-0.5 inline-block"
+            style={{ color: persona.color }}
+            onClick={(e) => {
+              e.stopPropagation()
+              setExpanded(!expanded)
             }}
           >
-            {trait}
-          </motion.span>
-        ))}
-        {persona.traits.length > 3 && (
-          <span className="rounded-full px-2.5 py-0.5 text-[11px]" style={{ color: 'var(--text-tertiary)', border: '1px solid var(--border-secondary)' }}>
-            +{persona.traits.length - 3}
+            {expanded ? 'Show less' : 'Read more'}
           </span>
         )}
+      </div>
+
+      {/* Traits — all shown, single line with gradient fade-out */}
+      <div className="relative overflow-hidden" style={{ maxHeight: '28px' }}>
+        <div className="flex gap-1.5 flex-nowrap">
+          {persona.traits.map((trait, i) => (
+            <motion.span
+              key={trait}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3, delay: index * 0.055 + i * 0.06, ease: [0.22, 1, 0.36, 1] }}
+              className="rounded-full px-2.5 py-0.5 text-[11px] font-medium tracking-wide whitespace-nowrap shrink-0"
+              style={{
+                background: `${persona.color}12`,
+                color: `${persona.color}cc`,
+                border: `1px solid ${persona.color}20`,
+              }}
+            >
+              {trait}
+            </motion.span>
+          ))}
+        </div>
+        {/* Gradient fade-out on the right */}
+        <div
+          className="absolute top-0 right-0 h-full w-12 pointer-events-none"
+          style={{
+            background: selected
+              ? `linear-gradient(90deg, transparent, color-mix(in srgb, ${persona.color}06 50%, var(--bg-card)))`
+              : 'linear-gradient(90deg, transparent, var(--bg-card))',
+          }}
+        />
       </div>
 
       {/* Custom badge */}
