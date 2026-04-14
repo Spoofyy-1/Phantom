@@ -63,17 +63,17 @@ function BrowserFrame({ url, screenshot, loading }: { url: string; screenshot: s
         {loading && <RefreshCw size={13} className="text-[#444460] animate-spin shrink-0" />}
       </div>
 
-      {/* Screenshot or skeleton */}
-      <div className="relative w-full" style={{ minHeight: 320 }}>
+      {/* Screenshot or skeleton — fixed 16:10 aspect ratio to match 1280x800 viewport */}
+      <div className="relative w-full" style={{ aspectRatio: '16 / 10', overflow: 'hidden' }}>
         {screenshot ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={`data:image/png;base64,${screenshot}`}
             alt="Live browser view"
-            className="w-full block"
+            className="absolute inset-0 w-full h-full object-cover object-top"
           />
         ) : (
-          <div className="flex flex-col items-center justify-center h-80 gap-3">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
             {loading ? (
               <>
                 <Loader2 size={24} className="text-[#2a2a42] animate-spin" />
