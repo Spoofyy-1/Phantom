@@ -144,11 +144,26 @@ class BrowserSession:
             title = await self.page.title()
         except Exception:
             title = ""
+        # Get scroll position so agent knows if it's reached the bottom
+        try:
+            scroll_info = await self.page.evaluate("""
+            () => {
+                const scrollY = window.scrollY || window.pageYOffset;
+                const viewportH = window.innerHeight;
+                const totalH = document.documentElement.scrollHeight;
+                const atBottom = (scrollY + viewportH) >= (totalH - 50);
+                const pct = totalH > viewportH ? Math.round((scrollY + viewportH) / totalH * 100) : 100;
+                return { scrollY: Math.round(scrollY), totalHeight: totalH, viewportHeight: viewportH, atBottom, scrollPercent: pct };
+            }
+            """)
+        except Exception:
+            scroll_info = {"scrollY": 0, "totalHeight": 800, "viewportHeight": 800, "atBottom": True, "scrollPercent": 100}
         return {
             "screenshot": screenshot,
             "elements": elements,
             "url": url,
             "title": title,
+            "scroll_info": scroll_info,
         }
 
     # ------------------------------------------------------------------ #
@@ -293,8 +308,21 @@ class BrowserSession:
 
     async def scroll(self, direction: str = "down", amount: int = 500) -> None:
         delta = amount if direction == "down" else -amount
-        await self.page.mouse.wheel(0, delta)
-        await asyncio.sleep(0.4)
+        try:
+            # Move mouse to center of viewport first so scroll targets the right element
+            viewport = self.page.viewport_size or {"width": 1280, "height": 800}
+            cx, cy = viewport["width"] // 2, viewport["height"] // 2
+            await self.page.mouse.move(cx, cy)
+            await asyncio.sleep(0.1)
+            await self.page.mouse.wheel(0, delta)
+        except Exception:
+            pass
+        # Fallback: also use JS scrollBy in case mouse.wheel didn't work
+        try:
+            await self.page.evaluate(f"window.scrollBy(0, {delta})")
+        except Exception:
+            pass
+        await asyncio.sleep(0.5)
         await self._wait_for_settle(800)
 
     async def navigate(self, url: str) -> None:

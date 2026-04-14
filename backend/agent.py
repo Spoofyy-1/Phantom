@@ -51,8 +51,8 @@ confusion_score: integer 0-10 (0 = no confusion, 10 = completely stuck)
 CRITICAL RULES:
 - You MUST take a different action each step. Never repeat the same action twice in a row.
 - If click by element_id does not navigate to a new page after 2 tries, switch to click_text using the exact visible text of the link.
-- If you have been scrolling, stop and CLICK something.
-- "scroll" should only be used to reveal content not yet visible. Use it at most twice before clicking.
+- When you arrive on ANY new page, you MUST scroll all the way to the bottom before clicking anything or calling done. Scroll down repeatedly until you see the footer or the page stops scrolling. This ensures you see ALL content on the page.
+- Only after you have scrolled to the bottom of a page should you decide what to click or whether to call done.
 - Prioritise clicking links that navigate to new pages.
 
 UX EVALUATION RULES (very important):
@@ -204,7 +204,9 @@ async def run_persona_session(
                     "type": "text",
                     "text": (
                         f"Current URL: {state['url']}\n"
-                        f"Page title: {state['title']}\n\n"
+                        f"Page title: {state['title']}\n"
+                        f"Scroll position: {state['scroll_info']['scrollPercent']}% of page"
+                        f"{' (AT BOTTOM)' if state['scroll_info']['atBottom'] else ' (MORE CONTENT BELOW — scroll down to see it)'}\n\n"
                         f"Interactive elements visible on screen:\n{elements_text}\n\n"
                         f"Your task: {task}\n\n"
                         f"Step {step + 1} of {MAX_STEPS}. What do you do next?"
