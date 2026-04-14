@@ -114,7 +114,12 @@ class BrowserSession:
             ),
         )
         self.page = await self._context.new_page()
-        await self.page.goto(url, wait_until="domcontentloaded", timeout=30000)
+        try:
+            await self.page.goto(url, wait_until="domcontentloaded", timeout=30000)
+        except Exception:
+            # Retry once with longer timeout
+            await asyncio.sleep(1)
+            await self.page.goto(url, wait_until="load", timeout=45000)
         await self._wait_for_settle()
 
     async def _wait_for_settle(self, timeout: int = 2500) -> None:
@@ -365,7 +370,10 @@ class BrowserSession:
     async def close(self) -> None:
         try:
             if self._browser:
-                await self._browser.close()
+                await asyncio.wait_for(self._browser.close(), timeout=5.0)
+        except Exception:
+            pass
+        try:
             if self._playwright:
                 await self._playwright.stop()
         except Exception:

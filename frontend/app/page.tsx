@@ -79,6 +79,14 @@ export default function Home() {
         finalUrl = 'https://' + finalUrl
         setUrl(finalUrl)
       }
+      // Validate URL format
+      try {
+        new URL(finalUrl)
+      } catch {
+        setError('Please enter a valid URL (e.g. https://example.com)')
+        setLoading(false)
+        return
+      }
       const allPersonas: PersonaRef[] = Array.from(selectedIds).map((id) => {
         const custom = customPersonas.find((p) => p.id === id)
         return custom ? { id, custom_persona: custom } : { id }
@@ -326,7 +334,12 @@ export default function Home() {
                 className="rounded-xl px-4 py-3 text-sm text-red-500 overflow-hidden"
                 style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}
               >
-                {error}
+                <span className="flex items-center gap-2">
+                  {error}
+                  <button onClick={() => setError(null)} className="ml-auto text-xs underline" style={{ color: 'var(--text-tertiary)' }}>
+                    Dismiss
+                  </button>
+                </span>
               </motion.div>
             )}
           </AnimatePresence>

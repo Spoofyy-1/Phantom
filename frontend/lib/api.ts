@@ -46,28 +46,54 @@ export function subscribeToTest(
   onEvent: (event: LiveEvent) => void,
   onError: (err: Error) => void
 ): () => void {
-  const url = `${API}/api/test/${testId}/stream`
-  const es = new EventSource(url)
+  let es: EventSource | null = null
+  let retries = 0
+  const maxRetries = 3
+  let closed = false
 
-  es.onmessage = (e) => {
-    if (!e.data || e.data.trim() === '{}') return
-    try {
-      const event: LiveEvent = JSON.parse(e.data)
-      onEvent(event)
-      if (event.type === 'test_complete' || event.type === 'error') {
-        es.close()
+  function connect() {
+    if (closed) return
+    const url = `${API}/api/test/${testId}/stream`
+    es = new EventSource(url)
+
+    es.onopen = () => {
+      retries = 0 // reset on successful connection
+    }
+
+    es.onmessage = (e) => {
+      if (!e.data || e.data.trim() === '{}') return
+      try {
+        const event: LiveEvent = JSON.parse(e.data)
+        onEvent(event)
+        if (event.type === 'test_complete' || event.type === 'error') {
+          es?.close()
+          closed = true
+        }
+      } catch {
+        // ignore parse errors from keep-alive pings
       }
-    } catch {
-      // ignore parse errors from keep-alive pings
+    }
+
+    es.onerror = () => {
+      es?.close()
+      if (closed) return
+      if (retries < maxRetries) {
+        retries++
+        const delay = Math.min(1000 * Math.pow(2, retries), 8000)
+        setTimeout(connect, delay)
+      } else {
+        closed = true
+        onError(new Error('Stream connection lost after multiple retries'))
+      }
     }
   }
 
-  es.onerror = () => {
-    es.close()
-    onError(new Error('Stream connection lost'))
-  }
+  connect()
 
-  return () => es.close()
+  return () => {
+    closed = true
+    es?.close()
+  }
 }
 
 export async function respondToQuestion(

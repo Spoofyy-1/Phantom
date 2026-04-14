@@ -16,6 +16,7 @@ from browser import BrowserSession
 from personas import ARCHETYPE_MAP
 
 MAX_STEPS = 25
+_BROWSER_SEMAPHORE = asyncio.Semaphore(8)  # max 8 concurrent browser sessions
 
 ACTION_SCHEMA = """
 Respond with ONLY a JSON object — no markdown, no explanation:
@@ -637,8 +638,12 @@ async def run_test(
     from main import TESTS
     response_queues = TESTS.get(test_id, {}).get("response_queues", {})
 
+    async def _limited_persona_session(**kwargs):
+        async with _BROWSER_SEMAPHORE:
+            return await run_persona_session(**kwargs)
+
     persona_results = await asyncio.gather(*[
-        run_persona_session(
+        _limited_persona_session(
             persona_id=p.get("id", ""),
             custom_persona=p.get("custom_persona"),
             url=url,

@@ -44,6 +44,18 @@ app.add_middleware(
 TESTS: dict[str, dict] = {}
 
 
+@app.on_event("startup")
+async def startup_cleanup():
+    async def cleanup_loop():
+        while True:
+            await asyncio.sleep(300)  # every 5 minutes
+            cutoff = time.time() - 1800  # 30 min
+            expired = [tid for tid, t in TESTS.items() if t.get("created_at", 0) < cutoff]
+            for tid in expired:
+                del TESTS[tid]
+    asyncio.create_task(cleanup_loop())
+
+
 # ------------------------------------------------------------------ #
 # Pydantic models
 # ------------------------------------------------------------------ #

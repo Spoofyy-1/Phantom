@@ -237,6 +237,7 @@ export default function TestPage() {
     question: string;
   } | null>(null)
   const [userResponse, setUserResponse] = useState('')
+  const [questionTimer, setQuestionTimer] = useState(120)
 
   const handleEvent = (event: LiveEvent) => {
     if (event.type === 'test_start') {
@@ -307,6 +308,7 @@ export default function TestPage() {
         question: event.question,
       })
       setActiveTab(event.persona_id)
+      setQuestionTimer(120)
     }
 
     if (event.type === 'persona_complete') {
@@ -377,6 +379,17 @@ export default function TestPage() {
     })
     return () => unsub()
   }, [testId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!pendingQuestion) return
+    if (questionTimer <= 0) {
+      setPendingQuestion(null)
+      setUserResponse('')
+      return
+    }
+    const t = setTimeout(() => setQuestionTimer(prev => prev - 1), 1000)
+    return () => clearTimeout(t)
+  }, [pendingQuestion, questionTimer])
 
   const personas = Array.from(personaMap.values())
   const active = activeTab ? personaMap.get(activeTab) : null
@@ -483,6 +496,9 @@ export default function TestPage() {
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-purple-300">
                       {pendingQuestion.personaName} is asking:
+                    </span>
+                    <span className="text-xs tabular-nums" style={{ color: questionTimer <= 10 ? '#ef4444' : 'var(--text-tertiary)' }}>
+                      {questionTimer}s remaining
                     </span>
                   </div>
                   <p className="text-sm" style={{ color: 'var(--text-primary)', opacity: 0.8 }}>&quot;{pendingQuestion.question}&quot;</p>

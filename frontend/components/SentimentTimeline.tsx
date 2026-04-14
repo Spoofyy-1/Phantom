@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { TrendingUp } from 'lucide-react'
 import type { PersonaResult } from '@/types'
 
@@ -46,6 +46,24 @@ export function SentimentTimeline({ personas }: SentimentTimelineProps) {
   function yPos(sentiment: number): number {
     return padTop + (1 - sentiment / 10) * chartH
   }
+
+  const chartData = useMemo(() => {
+    return withEvents.map((p, pi) => {
+      const color = PALETTE[pi % PALETTE.length]
+      const points = p.events.map((e, si) => ({
+        x: xPos(si),
+        y: yPos(10 - e.confusion_score),
+        sentiment: 10 - e.confusion_score,
+        confusion: e.confusion_score,
+        step: e.step,
+      }))
+      const linePath = smoothPath(points)
+      const areaPath = linePath
+        ? `${linePath} L ${points[points.length - 1].x} ${yPos(0)} L ${points[0].x} ${yPos(0)} Z`
+        : ''
+      return { persona: p, color, points, linePath, areaPath }
+    })
+  }, [withEvents, maxSteps]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const zones = [
     { label: 'Happy', y: 10, color: '#10b981' },
@@ -151,39 +169,23 @@ export function SentimentTimeline({ personas }: SentimentTimelineProps) {
           </text>
 
           {/* Area fills + lines + dots for each persona */}
-          {withEvents.map((p, pi) => {
-            const color = PALETTE[pi % PALETTE.length]
-            const points = p.events.map((e, si) => ({
-              x: xPos(si),
-              y: yPos(10 - e.confusion_score),
-              sentiment: 10 - e.confusion_score,
-              confusion: e.confusion_score,
-              step: e.step,
-            }))
-
-            const linePath = smoothPath(points)
-            // Area path: line + close to bottom
-            const areaPath = linePath
-              ? `${linePath} L ${points[points.length - 1].x} ${yPos(0)} L ${points[0].x} ${yPos(0)} Z`
-              : ''
-
-            return (
-              <g key={p.persona_id}>
+          {chartData.map((cd, pi) => (
+              <g key={cd.persona.persona_id}>
                 {/* Gradient fill under line */}
-                {areaPath && (
-                  <path d={areaPath} fill={`url(#sentGrad-${pi})`} />
+                {cd.areaPath && (
+                  <path d={cd.areaPath} fill={`url(#sentGrad-${pi})`} />
                 )}
                 {/* Smooth line */}
                 <path
-                  d={linePath}
+                  d={cd.linePath}
                   fill="none"
-                  stroke={color}
+                  stroke={cd.color}
                   strokeWidth={2.5}
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
                 {/* Dots */}
-                {points.map((pt, i) => {
+                {cd.points.map((pt, i) => {
                   const isHovered = hovered?.personaIdx === pi && hovered?.stepIdx === i
                   return (
                     <g key={i}>
@@ -202,21 +204,20 @@ export function SentimentTimeline({ personas }: SentimentTimelineProps) {
                         cx={pt.x}
                         cy={pt.y}
                         r={isHovered ? 5 : 3.5}
-                        fill={color}
+                        fill={cd.color}
                         stroke="var(--bg-card)"
                         strokeWidth={2}
                         style={{ transition: 'r 0.15s ease' }}
                       />
                       {/* Hover glow */}
                       {isHovered && (
-                        <circle cx={pt.x} cy={pt.y} r={12} fill={`${color}20`} />
+                        <circle cx={pt.x} cy={pt.y} r={12} fill={`${cd.color}20`} />
                       )}
                     </g>
                   )
                 })}
               </g>
-            )
-          })}
+            ))}
         </svg>
 
         {/* Tooltip */}
