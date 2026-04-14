@@ -221,6 +221,18 @@ export default function TestPage() {
       })
     }
 
+    if (event.type === 'screenshot_update') {
+      setPersonaMap((prev) => {
+        const next = new Map(prev)
+        const p = next.get(event.persona_id)
+        if (p) {
+          p.screenshot = event.screenshot
+          p.url = event.url
+        }
+        return next
+      })
+    }
+
     if (event.type === 'ask_user') {
       setPendingQuestion({
         personaId: event.persona_id,

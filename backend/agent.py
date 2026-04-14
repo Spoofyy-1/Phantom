@@ -328,6 +328,19 @@ async def run_persona_session(
             except Exception:
                 pass
 
+            # Emit a post-action screenshot so the live view updates immediately
+            if action_type not in ("done", "give_up", "ask_user"):
+                try:
+                    post_screenshot = await session.screenshot()
+                    await on_event({
+                        "type": "screenshot_update",
+                        "persona_id": persona_id,
+                        "screenshot": post_screenshot,
+                        "url": session.page.url,
+                    })
+                except Exception:
+                    pass
+
         # Hit max steps
         result = {
             "persona_id": persona_id,
