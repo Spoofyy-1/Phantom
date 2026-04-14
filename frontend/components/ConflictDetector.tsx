@@ -42,8 +42,9 @@ export function ConflictDetector({ personas }: ConflictDetectorProps) {
       const scoresB = personaUrlScores.get(pB.persona_id) ?? new Map()
 
       // Check all URLs both visited
-      const allUrls = new Set([...Array.from(scoresA.keys()), ...Array.from(scoresB.keys())])
-      for (const url of allUrls) {
+      const allUrlsArr = Array.from(new Set([...Array.from(scoresA.keys()), ...Array.from(scoresB.keys())]))
+      for (let ui = 0; ui < allUrlsArr.length; ui++) {
+        const url = allUrlsArr[ui]
         const scoreA = scoresA.get(url)
         const scoreB = scoresB.get(url)
         if (scoreA === undefined || scoreB === undefined) continue
