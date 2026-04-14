@@ -74,6 +74,7 @@ export type LiveEvent =
   | { type: 'persona_start'; persona_id: string; persona_name: string }
   | StepEvent
   | { type: 'persona_complete'; persona_id: string; persona_name: string; success: boolean; steps: number; result: PersonaResult }
+  | { type: 'ask_user'; persona_id: string; persona_name: string; question: string; screenshot: string }
   | { type: 'persona_error'; persona_id: string; persona_name: string; error: string }
   | { type: 'test_complete'; test_id: string; results: TestResults }
   | { type: 'error'; message: string }

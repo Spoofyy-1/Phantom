@@ -6,7 +6,7 @@ import {
   ArrowLeft, CheckCircle2, XCircle, Loader2, Circle,
   AlertTriangle, RefreshCw, ChevronRight
 } from 'lucide-react'
-import { subscribeToTest, getTestResults } from '@/lib/api'
+import { subscribeToTest, getTestResults, respondToQuestion } from '@/lib/api'
 import { ResultsView } from '@/components/ResultsView'
 import type { LiveEvent, TestResults, PersonaResult } from '@/types'
 import clsx from 'clsx'
@@ -164,6 +164,12 @@ export default function TestPage() {
   const [testUrl, setTestUrl] = useState('')
   const [task, setTask] = useState('')
   const [streamError, setStreamError] = useState<string | null>(null)
+  const [pendingQuestion, setPendingQuestion] = useState<{
+    personaId: string;
+    personaName: string;
+    question: string;
+  } | null>(null)
+  const [userResponse, setUserResponse] = useState('')
 
   const handleEvent = (event: LiveEvent) => {
     if (event.type === 'test_start') {
@@ -215,6 +221,15 @@ export default function TestPage() {
       })
     }
 
+    if (event.type === 'ask_user') {
+      setPendingQuestion({
+        personaId: event.persona_id,
+        personaName: event.persona_name,
+        question: event.question,
+      })
+      setActiveTab(event.persona_id)
+    }
+
     if (event.type === 'persona_complete') {
       setPersonaMap((prev) => {
         const next = new Map(prev)
@@ -257,6 +272,17 @@ export default function TestPage() {
     if (event.type === 'error') {
       setStatus('error')
       setStreamError(event.message)
+    }
+  }
+
+  const handleRespond = async () => {
+    if (!pendingQuestion || !userResponse.trim()) return
+    try {
+      await respondToQuestion(testId, pendingQuestion.personaId, userResponse)
+      setPendingQuestion(null)
+      setUserResponse('')
+    } catch {
+      // silently fail — agent will timeout and continue
     }
   }
 
@@ -357,6 +383,33 @@ export default function TestPage() {
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-5">
             {/* Left: browser frame */}
             <div className="space-y-4">
+              {pendingQuestion && activeTab === pendingQuestion.personaId && (
+                <div className="rounded-xl border border-purple-500/30 bg-purple-500/8 p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-purple-300">
+                      {pendingQuestion.personaName} is asking:
+                    </span>
+                  </div>
+                  <p className="text-sm text-white/80">&quot;{pendingQuestion.question}&quot;</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={userResponse}
+                      onChange={(e) => setUserResponse(e.target.value)}
+                      placeholder="Type your response..."
+                      className="flex-1 rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:border-purple-500/50"
+                      onKeyDown={(e) => e.key === 'Enter' && handleRespond()}
+                      autoFocus
+                    />
+                    <button
+                      onClick={handleRespond}
+                      className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-500 transition-colors"
+                    >
+                      Send
+                    </button>
+                  </div>
+                </div>
+              )}
               <BrowserFrame
                 url={active.url || testUrl}
                 screenshot={active.screenshot}

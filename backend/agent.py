@@ -42,6 +42,7 @@ Action type rules:
 - "navigate": set url to a full URL (include https://)
 - "back": go back in browser history
 - "press_enter": submit a form or confirm selection
+- "ask_user": set text to a question for the human operator. Use this when the site offers multiple products/services/paths and you need the user to choose which one to explore. Keep questions short and specific.
 - "done": task completed — set reason to a thorough summary: what the site does, key pages visited, main features, value proposition, and any UX issues noticed
 - "give_up": cannot complete — set reason explaining exactly where you got stuck
 
@@ -109,7 +110,14 @@ async def run_persona_session(
     url: str,
     task: str,
     on_event: Callable[[dict], Awaitable[None]],
+    test_id: str = "",
+    response_queues: dict = None,
 ) -> dict:
+    import asyncio as _asyncio
+    response_queue = _asyncio.Queue()
+    if response_queues is not None:
+        response_queues[persona_id] = response_queue
+
     if custom_persona:
         persona = custom_persona
     elif persona_id in ARCHETYPE_MAP:
@@ -296,6 +304,25 @@ async def run_persona_session(
                         await session.navigate(nav_url)
                 elif action_type == "back":
                     await session.go_back()
+                elif action_type == "ask_user":
+                    question = action.get("text", "What should I do?")
+                    await on_event({
+                        "type": "ask_user",
+                        "persona_id": persona_id,
+                        "persona_name": persona["name"],
+                        "question": question,
+                        "screenshot": state["screenshot"],
+                    })
+                    # Wait for user response (up to 120 seconds)
+                    try:
+                        user_response = await _asyncio.wait_for(response_queue.get(), timeout=120)
+                    except _asyncio.TimeoutError:
+                        user_response = "No response from user. Make your best judgment and continue."
+                    # Inject user response into history
+                    history.append({
+                        "role": "user",
+                        "content": [{"type": "text", "text": f"The human operator responds: \"{user_response}\""}],
+                    })
                 elif action_type == "press_enter":
                     await session.press_key("Enter")
             except Exception:
@@ -421,6 +448,10 @@ async def run_test(
 ) -> dict:
     await on_event({"type": "test_start", "test_id": test_id, "url": url, "task": task})
 
+    # Import TESTS to get response_queues for this test
+    from main import TESTS
+    response_queues = TESTS.get(test_id, {}).get("response_queues", {})
+
     persona_results = await asyncio.gather(*[
         run_persona_session(
             persona_id=p.get("id", ""),
@@ -428,6 +459,8 @@ async def run_test(
             url=url,
             task=task,
             on_event=on_event,
+            test_id=test_id,
+            response_queues=response_queues,
         )
         for p in personas
     ])

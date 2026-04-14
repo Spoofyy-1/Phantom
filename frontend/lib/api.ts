@@ -70,6 +70,19 @@ export function subscribeToTest(
   return () => es.close()
 }
 
+export async function respondToQuestion(
+  testId: string,
+  personaId: string,
+  response: string
+): Promise<void> {
+  const res = await fetch(`${API}/api/test/${testId}/respond`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ persona_id: personaId, response }),
+  })
+  if (!res.ok) throw new Error('Failed to send response')
+}
+
 export async function getTestResults(testId: string): Promise<{
   status: string
   results: TestResults | null

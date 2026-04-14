@@ -63,6 +63,11 @@ class ExpandPersonaRequest(BaseModel):
     description: str
 
 
+class RespondRequest(BaseModel):
+    persona_id: str
+    response: str
+
+
 # ------------------------------------------------------------------ #
 # Health
 # ------------------------------------------------------------------ #
@@ -118,6 +123,7 @@ async def start_test(body: RunTestRequest, background_tasks: BackgroundTasks):
         "events": [],
         "results": None,
         "created_at": time.time(),
+        "response_queues": {},
     }
 
     personas_payload = [
@@ -201,6 +207,18 @@ async def stream_test_events(test_id: str):
 # ------------------------------------------------------------------ #
 # Results (for polling or post-completion fetch)
 # ------------------------------------------------------------------ #
+
+@app.post("/api/test/{test_id}/respond")
+async def respond_to_question(test_id: str, body: RespondRequest):
+    run = TESTS.get(test_id)
+    if not run:
+        raise HTTPException(404, "Test not found")
+    queue = run["response_queues"].get(body.persona_id)
+    if not queue:
+        raise HTTPException(400, "No pending question for this persona")
+    await queue.put(body.response)
+    return {"ok": True}
+
 
 @app.get("/api/test/{test_id}/results")
 async def get_test_results(test_id: str):

@@ -16,6 +16,8 @@ _SELECTOR = ", ".join([
     'input:not([type="hidden"])',
     'select',
     'textarea',
+    'label',
+    'summary',
     '[role="button"]',
     '[role="link"]',
     '[role="checkbox"]',
@@ -25,6 +27,8 @@ _SELECTOR = ", ".join([
     '[role="option"]',
     '[role="combobox"]',
     '[role="treeitem"]',
+    '[role="switch"]',
+    '[role="gridcell"]',
     '[onclick]',
     '[tabindex]:not([tabindex="-1"])',
 ])
@@ -33,40 +37,55 @@ _ENUMERATE_JS = """
 () => {
     const SELECTOR = %s;
     const els = Array.from(document.querySelectorAll(SELECTOR));
-    return els
-        .map((el, i) => {
-            const rect = el.getBoundingClientRect();
-            const style = window.getComputedStyle(el);
-            const visible = (
-                rect.width > 0 && rect.height > 0 &&
-                style.visibility !== 'hidden' &&
-                style.display !== 'none' &&
-                style.opacity !== '0' &&
-                rect.top < window.innerHeight + 100 &&
-                rect.bottom > -100
-            );
-            if (!visible) return null;
-            const rawText = (
-                el.getAttribute('aria-label') ||
-                el.getAttribute('title') ||
-                el.textContent ||
-                el.value ||
-                el.placeholder ||
-                el.getAttribute('alt') || ''
-            ).replace(/\\s+/g, ' ').trim().slice(0, 100);
-            return {
-                id: i + 1,
-                tag: el.tagName.toLowerCase(),
-                type: el.type || el.getAttribute('role') || el.tagName.toLowerCase(),
-                text: rawText,
-                href: el.href || '',
-                x: Math.round(rect.left + rect.width / 2),
-                y: Math.round(rect.top + rect.height / 2),
-                disabled: el.disabled || el.getAttribute('aria-disabled') === 'true',
-            };
-        })
-        .filter(Boolean)
-        .slice(0, 80);
+    const seen = new Set(els);
+
+    function extractInfo(el) {
+        const rect = el.getBoundingClientRect();
+        const style = window.getComputedStyle(el);
+        const visible = (
+            rect.width > 0 && rect.height > 0 &&
+            style.visibility !== 'hidden' &&
+            style.display !== 'none' &&
+            style.opacity !== '0' &&
+            rect.top < window.innerHeight + 100 &&
+            rect.bottom > -100
+        );
+        if (!visible) return null;
+        const rawText = (
+            el.getAttribute('aria-label') ||
+            el.getAttribute('title') ||
+            el.textContent ||
+            el.value ||
+            el.placeholder ||
+            el.getAttribute('alt') || ''
+        ).replace(/\\s+/g, ' ').trim().slice(0, 100);
+        return {
+            tag: el.tagName.toLowerCase(),
+            type: el.type || el.getAttribute('role') || el.tagName.toLowerCase(),
+            text: rawText,
+            href: el.href || '',
+            x: Math.round(rect.left + rect.width / 2),
+            y: Math.round(rect.top + rect.height / 2),
+            disabled: el.disabled || el.getAttribute('aria-disabled') === 'true',
+        };
+    }
+
+    const results = els.map(el => extractInfo(el)).filter(Boolean);
+
+    // Second pass: find cursor:pointer elements not already captured
+    const cursorCandidates = document.querySelectorAll('div, span, li, img, label, summary');
+    for (const el of cursorCandidates) {
+        if (seen.has(el)) continue;
+        const style = window.getComputedStyle(el);
+        if (style.cursor !== 'pointer') continue;
+        const info = extractInfo(el);
+        if (info) {
+            results.push(info);
+            seen.add(el);
+        }
+    }
+
+    return results.slice(0, 100).map((item, i) => ({ ...item, id: i + 1 }));
 }
 """ % repr(_SELECTOR)
 
