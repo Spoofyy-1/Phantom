@@ -38,6 +38,15 @@ export interface PersonaResult {
   total_confusion_score: number
   events: StepEvent[]
   duration_seconds: number
+  click_points?: Array<{x: number; y: number; url: string; step: number}>
+  a11y_violations?: Array<{
+    id: string
+    impact: string
+    description: string
+    help: string
+    help_url: string
+    nodes_count: number
+  }>
 }
 
 export interface StepEvent {

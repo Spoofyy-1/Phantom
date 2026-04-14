@@ -306,6 +306,31 @@ class BrowserSession:
         await self._wait_for_settle()
 
     # ------------------------------------------------------------------ #
+    # Accessibility audit
+    # ------------------------------------------------------------------ #
+
+    async def run_accessibility_audit(self) -> list[dict]:
+        """Inject axe-core and run accessibility checks."""
+        try:
+            # Inject axe-core from CDN
+            await self.page.add_script_tag(url="https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.9.1/axe.min.js")
+            await asyncio.sleep(0.5)
+            results = await self.page.evaluate("() => axe.run().then(r => r.violations)")
+            violations = []
+            for v in (results or []):
+                violations.append({
+                    "id": v.get("id", ""),
+                    "impact": v.get("impact", ""),
+                    "description": v.get("description", ""),
+                    "help": v.get("help", ""),
+                    "help_url": v.get("helpUrl", ""),
+                    "nodes_count": len(v.get("nodes", [])),
+                })
+            return violations
+        except Exception:
+            return []
+
+    # ------------------------------------------------------------------ #
     # Cleanup
     # ------------------------------------------------------------------ #
 

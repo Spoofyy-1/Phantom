@@ -130,6 +130,7 @@ async def run_persona_session(
     session = BrowserSession(headless=True)
     events: list[dict] = []
     confusion_events: list[dict] = []
+    click_points: list[dict] = []
 
     system_prompt = persona["system_prompt"] + "\n\n" + ACTION_SCHEMA
 
@@ -257,6 +258,7 @@ async def run_persona_session(
                 })
 
             if action_type in ("done", "give_up"):
+                a11y_violations = await session.run_accessibility_audit()
                 result = {
                     "persona_id": persona_id,
                     "persona_name": persona["name"],
@@ -271,6 +273,8 @@ async def run_persona_session(
                     ),
                     "events": events,
                     "duration_seconds": round(time.time() - start_time, 1),
+                    "click_points": click_points,
+                    "a11y_violations": a11y_violations,
                 }
                 await on_event({
                     "type": "persona_complete",
@@ -281,6 +285,19 @@ async def run_persona_session(
                     "result": result,
                 })
                 return result
+
+            # Record click coordinates for heatmap
+            if action_type == "click":
+                eid = action.get("element_id")
+                if eid:
+                    coords = session._element_coords.get(int(eid))
+                    if coords:
+                        click_points.append({
+                            "x": coords[0],
+                            "y": coords[1],
+                            "url": state["url"],
+                            "step": step + 1,
+                        })
 
             # Execute action
             try:
@@ -342,6 +359,7 @@ async def run_persona_session(
                     pass
 
         # Hit max steps
+        a11y_violations = await session.run_accessibility_audit()
         result = {
             "persona_id": persona_id,
             "persona_name": persona["name"],
@@ -356,6 +374,8 @@ async def run_persona_session(
             ),
             "events": events,
             "duration_seconds": round(time.time() - start_time, 1),
+            "click_points": click_points,
+            "a11y_violations": a11y_violations,
         }
         await on_event({
             "type": "persona_complete",
@@ -380,6 +400,8 @@ async def run_persona_session(
             "total_confusion_score": 0,
             "events": events,
             "duration_seconds": round(time.time() - start_time, 1),
+            "click_points": click_points,
+            "a11y_violations": [],
         }
         await on_event({
             "type": "persona_error",

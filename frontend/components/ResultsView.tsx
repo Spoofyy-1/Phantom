@@ -5,6 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { AlertTriangle, CheckCircle2, XCircle, ChevronDown, ChevronUp, Image as ImageIcon, Lightbulb, FileText, BarChart3 } from 'lucide-react'
 import type { TestResults, PersonaResult, ConfusionEvent, UXDimensions } from '@/types'
 import clsx from 'clsx'
+import { Heatmap } from './Heatmap'
+import { AccessibilityReport } from './AccessibilityReport'
+import { FunnelView } from './FunnelView'
+import { SentimentTimeline } from './SentimentTimeline'
+import { ConflictDetector } from './ConflictDetector'
+import { ExportButton } from './ExportButton'
 
 function ScoreRing({ score }: { score: number }) {
   const r = 28
@@ -328,6 +334,11 @@ export function ResultsView({ results }: { results: TestResults }) {
         </div>
       )}
 
+      {/* Heatmap */}
+      {personas.some(p => (p.click_points ?? []).length > 0) && (
+        <Heatmap personas={personas} />
+      )}
+
       {/* AI Summary */}
       {summary && (
         <div className="rounded-2xl p-6 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)' }}>
@@ -362,6 +373,18 @@ export function ResultsView({ results }: { results: TestResults }) {
         </div>
       )}
 
+      {/* Accessibility Report */}
+      <AccessibilityReport personas={personas} />
+
+      {/* Navigation Funnel */}
+      <FunnelView personas={personas} />
+
+      {/* Sentiment Timeline */}
+      <SentimentTimeline personas={personas} />
+
+      {/* Persona Conflicts */}
+      <ConflictDetector personas={personas} />
+
       {/* Top friction points */}
       {top_issues.length > 0 && (
         <section>
@@ -387,6 +410,9 @@ export function ResultsView({ results }: { results: TestResults }) {
           ))}
         </div>
       </section>
+
+      {/* Export */}
+      <ExportButton results={results} />
     </div>
   )
 }
