@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowRight, Loader2, Sparkles, Users } from 'lucide-react'
+import { ArrowRight, Loader2, Sparkles, Users, Sun, Moon } from 'lucide-react'
 import { fetchArchetypes, startTest } from '@/lib/api'
 import { PersonaCard } from '@/components/PersonaCard'
 import { CustomPersonaBuilder } from '@/components/CustomPersonaBuilder'
@@ -29,6 +29,19 @@ export default function Home() {
   const [loading, setLoading]               = useState(false)
   const [error, setError]                   = useState<string | null>(null)
   const [archetypesLoading, setArchetypesLoading] = useState(true)
+  const [theme, setTheme]                   = useState<'light' | 'dark'>('dark')
+
+  useEffect(() => {
+    const stored = localStorage.getItem('phantom-theme') as 'light' | 'dark' | null
+    if (stored) setTheme(stored)
+  }, [])
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark'
+    setTheme(next)
+    localStorage.setItem('phantom-theme', next)
+    document.documentElement.setAttribute('data-theme', next)
+  }
 
   useEffect(() => {
     fetchArchetypes()
@@ -86,10 +99,6 @@ export default function Home() {
       {/* ── Section 1: Hero ──────────────────────────────────────────────── */}
       <section className="min-h-screen flex items-center justify-center relative">
         {/* Background layers */}
-        <div className="orb orb-1" />
-        <div className="orb orb-2" />
-        <div className="orb orb-3" />
-        <div className="dot-grid" />
         <div className="hero-glow" />
 
         {/* Sticky header */}
@@ -97,12 +106,17 @@ export default function Home() {
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="fixed top-0 left-0 right-0 border-b border-white/[0.05] px-6 py-4 backdrop-blur-sm z-50"
-          style={{ background: 'rgba(5,5,10,0.8)' }}
+          className="fixed top-0 left-0 right-0 px-6 py-4 backdrop-blur-sm z-50"
+          style={{ background: 'var(--bg-primary)', opacity: 0.95, borderBottom: '1px solid var(--border-primary)' }}
         >
           <div className="mx-auto max-w-5xl flex items-center justify-between">
-            <span className="text-lg font-bold tracking-tight text-white">Phantom</span>
-            <span className="text-xs text-white/20 hidden sm:block font-medium">Synthetic UX testing</span>
+            <span className="text-lg font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>Phantom</span>
+            <div className="flex items-center gap-4">
+              <span className="text-xs hidden sm:block font-medium" style={{ color: 'var(--text-tertiary)' }}>Synthetic UX testing</span>
+              <button onClick={toggleTheme} className="theme-toggle" aria-label="Toggle theme">
+                {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+              </button>
+            </div>
           </div>
         </motion.header>
 
@@ -116,7 +130,7 @@ export default function Home() {
             transition={{ duration: 0.55, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
           >
             <span className="tag-chip inline-flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-purple-400 animate-pulse" />
+              <span className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ background: 'var(--accent-light)' }} />
               8 AI personas · Real browser · GPT-4o vision
             </span>
           </motion.div>
@@ -126,7 +140,8 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="text-6xl sm:text-7xl font-black leading-[1.05] text-white"
+            className="text-6xl sm:text-7xl font-black leading-[1.05]"
+            style={{ color: 'var(--text-primary)' }}
           >
             Your website, seen through{' '}
             <span className="gradient-text">different eyes</span>
@@ -137,7 +152,8 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            className="max-w-lg mx-auto text-center text-white/40 text-lg leading-relaxed"
+            className="max-w-lg mx-auto text-center text-lg leading-relaxed"
+            style={{ color: 'var(--text-secondary)' }}
           >
             AI agents browse your site as real people — a confused grandparent, an impatient teen, a screen-reader user. See exactly where they get stuck.
           </motion.p>
@@ -150,9 +166,9 @@ export default function Home() {
             className="flex gap-3 justify-center flex-wrap"
           >
             {[
-              { num: '①', label: 'Drop a URL' },
-              { num: '②', label: 'Pick personas' },
-              { num: '③', label: 'Get insights' },
+              { num: '\u2460', label: 'Drop a URL' },
+              { num: '\u2461', label: 'Pick personas' },
+              { num: '\u2462', label: 'Get insights' },
             ].map(({ num, label }) => (
               <motion.span
                 key={label}
@@ -160,12 +176,12 @@ export default function Home() {
                 transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                 className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium cursor-default"
                 style={{
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  color: 'rgba(255,255,255,0.5)',
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border-primary)',
+                  color: 'var(--text-secondary)',
                 }}
               >
-                <span style={{ color: '#a78bfa', fontWeight: 700 }}>{num}</span>
+                <span style={{ color: 'var(--accent-light)', fontWeight: 700 }}>{num}</span>
                 {label}
               </motion.span>
             ))}
@@ -242,14 +258,14 @@ export default function Home() {
                 whileTap={{ scale: 0.95 }}
                 className="rounded-full text-xs px-3 py-1.5 border transition-all duration-200"
                 style={task === t.value ? {
-                  background: 'rgba(124,58,237,0.2)',
-                  borderColor: 'rgba(124,58,237,0.5)',
-                  color: '#c084fc',
+                  background: 'var(--accent-bg)',
+                  borderColor: 'var(--accent-border)',
+                  color: 'var(--accent-light)',
                   boxShadow: '0 0 12px rgba(124,58,237,0.15)',
                 } : {
-                  background: 'rgba(255,255,255,0.03)',
-                  borderColor: 'rgba(255,255,255,0.08)',
-                  color: 'rgba(255,255,255,0.35)',
+                  background: 'var(--bg-card)',
+                  borderColor: 'var(--border-primary)',
+                  color: 'var(--text-tertiary)',
                 }}
               >
                 {t.label}
@@ -268,10 +284,10 @@ export default function Home() {
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Users size={14} style={{ color: 'rgba(255,255,255,0.3)' }} />
+              <Users size={14} style={{ color: 'var(--text-tertiary)' }} />
               <span className="section-label">Choose personas</span>
               {selectedIds.size > 0 && (
-                <span className="text-xs font-semibold" style={{ color: '#a78bfa' }}>
+                <span className="text-xs font-semibold" style={{ color: 'var(--accent-light)' }}>
                   <motion.span
                     key={selectedIds.size}
                     initial={{ scale: 1.4, opacity: 0 }}
@@ -292,9 +308,8 @@ export default function Home() {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
                   onClick={() => setSelectedIds(new Set())}
-                  className="text-xs transition-colors"
-                  style={{ color: 'rgba(255,255,255,0.25)' }}
-                  whileHover={{ color: 'rgba(255,255,255,0.7)' } as never}
+                  className="text-xs transition-colors hover:opacity-80"
+                  style={{ color: 'var(--text-tertiary)' }}
                 >
                   Clear all
                 </motion.button>
@@ -308,7 +323,7 @@ export default function Home() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="rounded-xl px-4 py-3 text-sm text-red-400 overflow-hidden"
+                className="rounded-xl px-4 py-3 text-sm text-red-500 overflow-hidden"
                 style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}
               >
                 {error}
@@ -376,7 +391,7 @@ export default function Home() {
               </>
             )}
           </motion.button>
-          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.15)' }}>
+          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
             All personas browse simultaneously · GPT-4o · ~2 min
           </p>
         </motion.div>

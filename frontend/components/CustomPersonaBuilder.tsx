@@ -47,20 +47,20 @@ export function CustomPersonaBuilder({ onPersonaCreated }: Props) {
         whileTap={{ scale: 0.97 }}
         className="group w-full rounded-2xl p-5 text-left h-full min-h-[160px] flex items-center transition-colors duration-200"
         style={{
-          background: 'rgba(255,255,255,0.015)',
-          border: '1px dashed rgba(255,255,255,0.1)',
+          background: 'var(--bg-card)',
+          border: '1px dashed var(--border-primary)',
         }}
       >
         <div className="flex items-center gap-3 w-full">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl transition-colors duration-200"
-            style={{ background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.2)' }}>
-            <Plus size={18} style={{ color: 'rgba(192,132,252,0.6)' }} />
+            style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent-border)' }}>
+            <Plus size={18} style={{ color: 'var(--accent-light)' }} />
           </div>
           <div>
-            <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.5)' }}>
+            <p className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
               Build a custom persona
             </p>
-            <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.2)' }}>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
               Describe your user — AI fills in the rest
             </p>
           </div>
@@ -78,19 +78,19 @@ export function CustomPersonaBuilder({ onPersonaCreated }: Props) {
         transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
         className="rounded-2xl p-5 space-y-4 breathing-glow"
         style={{
-          background: 'rgba(124,58,237,0.06)',
-          border: '1px solid rgba(124,58,237,0.25)',
+          background: 'var(--accent-bg)',
+          border: '1px solid var(--accent-border)',
         }}
       >
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Sparkles size={14} style={{ color: '#c084fc' }} />
-            <span className="text-sm font-semibold text-white">Custom Persona</span>
+            <Sparkles size={14} style={{ color: 'var(--accent-light)' }} />
+            <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Custom Persona</span>
           </div>
           <button onClick={() => { setOpen(false); setDescription(''); setError(null) }}
             className="rounded-lg p-1 transition-colors"
-            style={{ color: 'rgba(255,255,255,0.3)' }}>
+            style={{ color: 'var(--text-tertiary)' }}>
             <X size={14} />
           </button>
         </div>
@@ -104,7 +104,7 @@ export function CustomPersonaBuilder({ onPersonaCreated }: Props) {
               whileHover={{ scale: 1.05, y: -1 }}
               whileTap={{ scale: 0.95 }}
               className="text-[11px] px-2.5 py-1 rounded-full transition-all duration-150"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.35)' }}
+              style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-primary)', color: 'var(--text-tertiary)' }}
             >
               {ex.slice(0, 36)}…
             </motion.button>
@@ -123,7 +123,7 @@ export function CustomPersonaBuilder({ onPersonaCreated }: Props) {
           style={{ borderRadius: '12px' }}
         />
         <div className="flex justify-between items-center">
-          <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.2)' }}>{description.length}/500 · ⌘↵ to build</span>
+          <span className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>{description.length}/500 · ⌘↵ to build</span>
         </div>
 
         <AnimatePresence>
@@ -132,7 +132,7 @@ export function CustomPersonaBuilder({ onPersonaCreated }: Props) {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="text-xs text-red-400 rounded-lg px-3 py-2 overflow-hidden"
+              className="text-xs text-red-500 rounded-lg px-3 py-2 overflow-hidden"
               style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}
             >
               {error}

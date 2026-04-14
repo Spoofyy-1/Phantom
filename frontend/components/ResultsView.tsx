@@ -48,7 +48,7 @@ function ScoreRing({ score }: { score: number }) {
   return (
     <div className="relative inline-flex items-center justify-center">
       <svg width={72} height={72} className="-rotate-90">
-        <circle cx={36} cy={36} r={r} fill="none" stroke="#1e1e2e" strokeWidth={5} />
+        <circle cx={36} cy={36} r={r} fill="none" stroke="var(--border-primary)" strokeWidth={5} />
         <circle
           cx={36}
           cy={36}
@@ -74,10 +74,13 @@ function ConfusionCard({ event, index }: { event: ConfusionEvent; index: number 
   const scoreColor = event.confusion_score >= 7 ? '#ef4444' : event.confusion_score >= 4 ? '#f59e0b' : '#10b981'
 
   return (
-    <div className="rounded-xl border border-[#1e1e2e] bg-[#0d0d14] overflow-hidden">
+    <div className="rounded-xl overflow-hidden"
+      style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)' }}>
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-start gap-3 p-4 text-left hover:bg-[#111118] transition-colors"
+        className="w-full flex items-start gap-3 p-4 text-left transition-colors"
+        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-card-hover)'}
+        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
       >
         <span
           className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-black"
@@ -90,7 +93,7 @@ function ConfusionCard({ event, index }: { event: ConfusionEvent; index: number 
             {event.persona_name && (
               <span className="text-[11px] font-medium text-purple-400">{event.persona_name}</span>
             )}
-            <span className="text-[11px] text-[#555570]">Step {event.step}</span>
+            <span className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>Step {event.step}</span>
             <span
               className="ml-auto text-[11px] font-semibold px-1.5 py-0.5 rounded"
               style={{ backgroundColor: `${scoreColor}20`, color: scoreColor }}
@@ -98,15 +101,15 @@ function ConfusionCard({ event, index }: { event: ConfusionEvent; index: number 
               {event.confusion_score}/10
             </span>
           </div>
-          <p className="text-sm text-[#e2e2f0] leading-relaxed line-clamp-2">
+          <p className="text-sm leading-relaxed line-clamp-2" style={{ color: 'var(--text-primary)' }}>
             {event.confusion_note}
           </p>
-          <p className="text-xs text-[#555570] mt-1 truncate">{event.url}</p>
+          <p className="text-xs mt-1 truncate" style={{ color: 'var(--text-tertiary)' }}>{event.url}</p>
         </div>
         {expanded ? (
-          <ChevronUp size={16} className="text-[#555570] shrink-0 mt-1" />
+          <ChevronUp size={16} style={{ color: 'var(--text-tertiary)' }} className="shrink-0 mt-1" />
         ) : (
-          <ChevronDown size={16} className="text-[#555570] shrink-0 mt-1" />
+          <ChevronDown size={16} style={{ color: 'var(--text-tertiary)' }} className="shrink-0 mt-1" />
         )}
       </button>
 
@@ -119,16 +122,16 @@ function ConfusionCard({ event, index }: { event: ConfusionEvent; index: number 
             transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             className="overflow-hidden"
           >
-            <div className="border-t border-[#1e1e2e] p-4 space-y-3">
-              <div className="rounded-lg bg-[#111118] border border-[#1e1e2e] p-3">
-                <p className="text-xs text-[#555570] mb-1">Internal thought</p>
-                <p className="text-sm text-[#8888aa] italic">&quot;{event.thought}&quot;</p>
+            <div className="p-4 space-y-3" style={{ borderTop: '1px solid var(--border-primary)' }}>
+              <div className="rounded-lg p-3" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)' }}>
+                <p className="text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>Internal thought</p>
+                <p className="text-sm italic" style={{ color: 'var(--text-secondary)' }}>&quot;{event.thought}&quot;</p>
               </div>
               {event.screenshot && (
-                <div className="rounded-lg overflow-hidden border border-[#1e1e2e]">
-                  <div className="flex items-center gap-2 px-3 py-2 bg-[#111118] border-b border-[#1e1e2e]">
-                    <ImageIcon size={12} className="text-[#555570]" />
-                    <span className="text-[11px] text-[#555570]">Screenshot at confusion point</span>
+                <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border-primary)' }}>
+                  <div className="flex items-center gap-2 px-3 py-2" style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-primary)' }}>
+                    <ImageIcon size={12} style={{ color: 'var(--text-tertiary)' }} />
+                    <span className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>Screenshot at confusion point</span>
                   </div>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -151,15 +154,18 @@ function PersonaSummary({ result }: { result: PersonaResult }) {
   const isError = !result.success && result.steps_taken === 0
 
   return (
-    <div className="rounded-2xl border border-[#1e1e2e] bg-[#111118] overflow-hidden hover:-translate-y-0.5 transition-transform duration-200">
+    <div className="rounded-2xl overflow-hidden hover:-translate-y-0.5 transition-transform duration-200"
+      style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)' }}>
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-3 p-5 text-left hover:bg-[#0d0d14] transition-colors"
+        className="w-full flex items-center gap-3 p-5 text-left transition-colors"
+        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-card-hover)'}
+        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
       >
         <span className="text-2xl">{result.persona_avatar}</span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <p className="font-semibold text-[#e2e2f0]">{result.persona_name}</p>
+            <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{result.persona_name}</p>
             {result.success ? (
               <span className="flex items-center gap-1 text-[11px] text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 rounded-full px-2 py-0.5">
                 <CheckCircle2 size={10} />
@@ -177,19 +183,19 @@ function PersonaSummary({ result }: { result: PersonaResult }) {
               </span>
             )}
           </div>
-          <p className="text-xs text-[#8888aa] mt-0.5 line-clamp-1">{result.reason}</p>
+          <p className="text-xs mt-0.5 line-clamp-1" style={{ color: 'var(--text-secondary)' }}>{result.reason}</p>
         </div>
         <div className="text-right shrink-0 mr-2">
-          <p className="text-sm font-semibold text-[#e2e2f0]">{result.steps_taken} steps</p>
-          <p className="text-xs text-[#555570]">{result.confusion_events.length} friction pts</p>
+          <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{result.steps_taken} steps</p>
+          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{result.confusion_events.length} friction pts</p>
         </div>
-        {open ? <ChevronUp size={16} className="text-[#555570]" /> : <ChevronDown size={16} className="text-[#555570]" />}
+        {open ? <ChevronUp size={16} style={{ color: 'var(--text-tertiary)' }} /> : <ChevronDown size={16} style={{ color: 'var(--text-tertiary)' }} />}
       </button>
 
       {open && (
-        <div className="border-t border-[#1e1e2e] p-5 space-y-4">
+        <div className="p-5 space-y-4" style={{ borderTop: '1px solid var(--border-primary)' }}>
           {result.confusion_events.length === 0 ? (
-            <p className="text-sm text-[#8888aa] text-center py-4">No confusion events — smooth sailing!</p>
+            <p className="text-sm text-center py-4" style={{ color: 'var(--text-secondary)' }}>No confusion events — smooth sailing!</p>
           ) : (
             result.confusion_events.map((ce, i) => (
               <ConfusionCard key={i} event={ce} index={i} />
@@ -216,15 +222,15 @@ export function ResultsView({ results }: { results: TestResults }) {
   return (
     <div className="space-y-8 animate-slide-up">
       {/* Overall score */}
-      <div className="rounded-2xl border border-[#1e1e2e] bg-[#111118] p-6">
+      <div className="rounded-2xl p-6" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)' }}>
         {allErrored ? (
           <div className="flex items-center gap-4">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-orange-500/10 border border-orange-500/20">
               <AlertTriangle size={24} className="text-orange-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-[#e2e2f0]">Test Failed</p>
-              <p className="text-[#8888aa] mt-1">All personas encountered errors — check the details below</p>
+              <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Test Failed</p>
+              <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>All personas encountered errors — check the details below</p>
             </div>
           </div>
         ) : (
@@ -242,12 +248,12 @@ export function ResultsView({ results }: { results: TestResults }) {
             </motion.div>
             <div>
               <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold text-[#e2e2f0]">UX Score</p>
+                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>UX Score</p>
                 <span className="text-sm font-medium px-2 py-0.5 rounded-full" style={{ color: gradeColor, background: `${gradeColor}15` }}>
                   {GRADE_LABEL[grade] ?? grade}
                 </span>
               </div>
-              <p className="text-[#8888aa] mt-1">
+              <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>
                 {succeeded}/{total_personas} personas completed the task
                 {' · '}
                 Avg confusion {results.avg_confusion.toFixed(1)}/10
@@ -259,21 +265,21 @@ export function ResultsView({ results }: { results: TestResults }) {
 
       {/* AI Summary */}
       {summary && (
-        <div className="rounded-2xl border border-[#1e1e2e] bg-[#111118] p-6 space-y-4">
+        <div className="rounded-2xl p-6 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)' }}>
           <div className="flex items-center gap-2">
             <FileText size={15} className="text-purple-400" />
-            <h2 className="text-base font-semibold text-[#e2e2f0]">Assessment</h2>
+            <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Assessment</h2>
           </div>
-          <p className="text-sm text-[#8888aa] leading-relaxed">{summary}</p>
+          <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{summary}</p>
         </div>
       )}
 
       {/* Recommendations */}
       {recommendations && recommendations.length > 0 && (
-        <div className="rounded-2xl border border-[#1e1e2e] bg-[#111118] p-6 space-y-4">
+        <div className="rounded-2xl p-6 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)' }}>
           <div className="flex items-center gap-2">
             <Lightbulb size={15} className="text-amber-400" />
-            <h2 className="text-base font-semibold text-[#e2e2f0]">Recommendations</h2>
+            <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Recommendations</h2>
           </div>
           <ul className="space-y-2">
             {recommendations.map((rec, i) => (
@@ -284,7 +290,7 @@ export function ResultsView({ results }: { results: TestResults }) {
                 >
                   {i + 1}
                 </span>
-                <p className="text-sm text-[#ccccee] leading-relaxed">{rec}</p>
+                <p className="text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>{rec}</p>
               </li>
             ))}
           </ul>
@@ -296,8 +302,8 @@ export function ResultsView({ results }: { results: TestResults }) {
         <section>
           <div className="flex items-center gap-2 mb-4">
             <AlertTriangle size={16} className="text-amber-400" />
-            <h2 className="text-base font-semibold text-[#e2e2f0]">Top Friction Points</h2>
-            <span className="text-xs text-[#555570] ml-auto">Sorted by severity</span>
+            <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Top Friction Points</h2>
+            <span className="text-xs ml-auto" style={{ color: 'var(--text-tertiary)' }}>Sorted by severity</span>
           </div>
           <div className="space-y-3">
             {top_issues.map((issue, i) => (
@@ -309,7 +315,7 @@ export function ResultsView({ results }: { results: TestResults }) {
 
       {/* Per-persona breakdown */}
       <section>
-        <h2 className="text-base font-semibold text-[#e2e2f0] mb-4">Persona Reports</h2>
+        <h2 className="text-base font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Persona Reports</h2>
         <div className="space-y-3">
           {personas.map((result) => (
             <PersonaSummary key={result.persona_id} result={result} />

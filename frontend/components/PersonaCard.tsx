@@ -25,11 +25,11 @@ export function PersonaCard({ persona, selected, onToggle, index = 0 }: Props) {
       style={{
         background: selected
           ? `linear-gradient(135deg, ${persona.color}12, ${persona.color}06)`
-          : 'rgba(255,255,255,0.025)',
-        border: `1px solid ${selected ? persona.color + '55' : 'rgba(255,255,255,0.07)'}`,
+          : 'var(--bg-card)',
+        border: `1px solid ${selected ? persona.color + '55' : 'var(--border-primary)'}`,
         boxShadow: selected
           ? `0 0 0 1px ${persona.color}30, 0 8px 32px ${persona.color}18, inset 0 1px 0 ${persona.color}20`
-          : '0 1px 0 rgba(255,255,255,0.04)',
+          : 'var(--shadow-card)',
       }}
     >
       {/* Hover glow overlay */}
@@ -42,7 +42,7 @@ export function PersonaCard({ persona, selected, onToggle, index = 0 }: Props) {
       <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
         <div
           className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out"
-          style={{ background: 'linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.05) 50%, transparent 70%)' }}
+          style={{ background: 'linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.04) 50%, transparent 70%)' }}
         />
       </div>
 
@@ -72,7 +72,7 @@ export function PersonaCard({ persona, selected, onToggle, index = 0 }: Props) {
           {persona.avatar}
         </div>
         <div className="min-w-0 pt-0.5">
-          <p className="font-semibold text-[#e8e8f0] text-[15px] leading-tight truncate">
+          <p className="font-semibold text-[15px] leading-tight truncate" style={{ color: 'var(--text-primary)' }}>
             {persona.name}
           </p>
           <p className="text-xs mt-0.5" style={{ color: persona.color + 'cc' }}>
@@ -82,7 +82,7 @@ export function PersonaCard({ persona, selected, onToggle, index = 0 }: Props) {
       </div>
 
       {/* Short desc */}
-      <p className="text-[13px] text-[#6666a0] leading-relaxed mb-3.5 line-clamp-2">
+      <p className="text-[13px] leading-relaxed mb-3.5 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>
         {persona.short_desc}
       </p>
 
@@ -105,7 +105,7 @@ export function PersonaCard({ persona, selected, onToggle, index = 0 }: Props) {
           </motion.span>
         ))}
         {persona.traits.length > 3 && (
-          <span className="rounded-full px-2.5 py-0.5 text-[11px] text-[#3a3a60] border border-white/5">
+          <span className="rounded-full px-2.5 py-0.5 text-[11px]" style={{ color: 'var(--text-tertiary)', border: '1px solid var(--border-secondary)' }}>
             +{persona.traits.length - 3}
           </span>
         )}

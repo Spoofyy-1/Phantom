@@ -39,7 +39,7 @@ function statusDot(status: PersonaLive['status']) {
   if (status === 'running') return <span className="h-2 w-2 rounded-full bg-purple-400 animate-pulse" />
   if (status === 'done')    return <span className="h-2 w-2 rounded-full bg-emerald-400" />
   if (status === 'failed')  return <span className="h-2 w-2 rounded-full bg-red-400" />
-  return <span className="h-2 w-2 rounded-full bg-[#2a2a42]" />
+  return <span className="h-2 w-2 rounded-full" style={{ background: 'var(--border-primary)' }} />
 }
 
 // ─── Browser chrome wrapper ───────────────────────────────────────────────────
@@ -97,11 +97,12 @@ function ThoughtBubble({ persona, thought, action, confusionScore, step }: {
   const confColor = confusionScore >= 7 ? '#ef4444' : confusionScore >= 4 ? '#f59e0b' : '#10b981'
 
   return (
-    <div className="rounded-xl border border-[#1e1e32] bg-[#0d0d18] p-4 space-y-3">
+    <div className="rounded-xl p-4 space-y-3"
+      style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)' }}>
       <div className="flex items-center gap-2">
         <span className="text-base">{persona.avatar}</span>
-        <span className="text-xs font-medium text-[#ccccee]">{persona.name} is thinking…</span>
-        {step > 0 && <span className="ml-auto text-[11px] text-[#444460]">step {step}</span>}
+        <span className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>{persona.name} is thinking…</span>
+        {step > 0 && <span className="ml-auto text-[11px]" style={{ color: 'var(--text-tertiary)' }}>step {step}</span>}
       </div>
       <AnimatePresence mode="wait">
         <motion.p
@@ -110,15 +111,16 @@ function ThoughtBubble({ persona, thought, action, confusionScore, step }: {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -4 }}
           transition={{ duration: 0.2 }}
-          className="text-sm text-[#8888bb] italic leading-relaxed"
+          className="text-sm italic leading-relaxed"
+          style={{ color: 'var(--text-secondary)' }}
         >
           &quot;{thought}&quot;
         </motion.p>
       </AnimatePresence>
       {action && action !== 'done' && action !== 'give_up' && (
         <div className="flex items-center gap-2 pt-1">
-          <ChevronRight size={12} className="text-[#444460]" />
-          <span className="text-xs text-[#555570]">{action}</span>
+          <ChevronRight size={12} style={{ color: 'var(--text-tertiary)' }} />
+          <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{action}</span>
           {confusionScore > 0 && (
             <span className="ml-auto text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ color: confColor, backgroundColor: `${confColor}15` }}>
               confused {confusionScore}/10
@@ -138,23 +140,28 @@ function EventFeed({ feed }: { feed: PersonaLive['feed'] }) {
   }, [feed.length])
 
   if (feed.length === 0) return (
-    <div className="rounded-xl border border-[#1e1e32] bg-[#0d0d18] p-4 text-center text-xs text-[#333350]">
+    <div className="rounded-xl p-4 text-center text-xs"
+      style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)', color: 'var(--text-tertiary)' }}>
       No steps yet
     </div>
   )
 
   return (
-    <div className="rounded-xl border border-[#1e1e32] bg-[#0d0d18] overflow-hidden">
-      <div className="px-4 py-2.5 border-b border-[#1a1a2e]">
-        <p className="text-xs font-medium text-[#444460] uppercase tracking-wider">Step history</p>
+    <div className="rounded-xl overflow-hidden"
+      style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)' }}>
+      <div className="px-4 py-2.5" style={{ borderBottom: '1px solid var(--border-secondary)' }}>
+        <p className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>Step history</p>
       </div>
       <div className="max-h-64 overflow-y-auto p-2 space-y-1">
         {feed.map((f, i) => {
           const confColor = f.confusion >= 7 ? '#ef4444' : f.confusion >= 4 ? '#f59e0b' : 'transparent'
           return (
-            <div key={i} className="flex items-start gap-2.5 px-2 py-2 rounded-lg hover:bg-[#111120] transition-colors animate-slide-in-right">
-              <span className="text-[11px] text-[#333350] tabular-nums mt-0.5 shrink-0 w-6 text-right">{f.step}</span>
-              <p className="text-xs text-[#666688] leading-relaxed flex-1 min-w-0 truncate">{f.thought}</p>
+            <div key={i} className="flex items-start gap-2.5 px-2 py-2 rounded-lg transition-colors animate-slide-in-right"
+              style={{ color: 'var(--text-secondary)' }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-card-hover)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+              <span className="text-[11px] tabular-nums mt-0.5 shrink-0 w-6 text-right" style={{ color: 'var(--text-tertiary)' }}>{f.step}</span>
+              <p className="text-xs leading-relaxed flex-1 min-w-0 truncate" style={{ color: 'var(--text-secondary)' }}>{f.thought}</p>
               {f.confusion >= 4 && (
                 <AlertTriangle size={11} style={{ color: confColor }} className="shrink-0 mt-0.5" />
               )}
@@ -330,22 +337,26 @@ export default function TestPage() {
   const active = activeTab ? personaMap.get(activeTab) : null
 
   return (
-    <main className="min-h-screen bg-[#09090f] flex flex-col">
+    <main className="min-h-screen flex flex-col" style={{ background: 'var(--bg-primary)' }}>
       {/* Header */}
-      <header className="sticky top-0 z-10 border-b border-[#1a1a2e] bg-[#09090f]/95 backdrop-blur-sm px-5 py-3.5">
+      <header className="sticky top-0 z-10 backdrop-blur-sm px-5 py-3.5"
+        style={{ background: 'color-mix(in srgb, var(--bg-primary) 95%, transparent)', borderBottom: '1px solid var(--border-primary)' }}>
         <div className="mx-auto max-w-6xl flex items-center gap-4">
-          <button onClick={() => router.push('/')} className="flex items-center gap-1.5 text-sm text-[#444460] hover:text-[#ccccee] transition-colors shrink-0">
+          <button onClick={() => router.push('/')} className="flex items-center gap-1.5 text-sm transition-colors shrink-0"
+            style={{ color: 'var(--text-tertiary)' }}
+            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
+            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}>
             <ArrowLeft size={15} />
             Back
           </button>
-          <span className="text-sm font-semibold text-white shrink-0">Phantom</span>
+          <span className="text-sm font-semibold shrink-0" style={{ color: 'var(--text-primary)' }}>Phantom</span>
           {testUrl && (
-            <span className="text-xs text-[#444460] truncate hidden sm:block font-mono">
+            <span className="text-xs truncate hidden sm:block font-mono" style={{ color: 'var(--text-tertiary)' }}>
               → {testUrl}
             </span>
           )}
           <div className="ml-auto shrink-0">
-            {status === 'connecting' && <span className="flex items-center gap-1.5 text-xs text-[#444460]"><Loader2 size={12} className="animate-spin" />Connecting</span>}
+            {status === 'connecting' && <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-tertiary)' }}><Loader2 size={12} className="animate-spin" />Connecting</span>}
             {status === 'running'    && <span className="flex items-center gap-1.5 text-xs text-purple-400 bg-purple-400/10 border border-purple-400/20 rounded-full px-3 py-1"><Circle size={6} className="fill-purple-400" />Running</span>}
             {status === 'complete'   && <span className="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 rounded-full px-3 py-1"><CheckCircle2 size={11} />Complete</span>}
             {status === 'error'      && <span className="flex items-center gap-1.5 text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-full px-3 py-1"><XCircle size={11} />Error</span>}
@@ -355,17 +366,17 @@ export default function TestPage() {
 
       {/* Task bar */}
       {task && (
-        <div className="border-b border-[#1a1a2e] bg-[#0a0a12] px-5 py-2.5">
+        <div className="px-5 py-2.5" style={{ borderBottom: '1px solid var(--border-primary)', background: 'var(--bg-secondary)' }}>
           <div className="mx-auto max-w-6xl flex items-center gap-3">
-            <span className="text-[10px] font-semibold text-[#333350] uppercase tracking-widest shrink-0">Task</span>
-            <span className="text-xs text-[#8888bb]">{task}</span>
+            <span className="text-[10px] font-semibold uppercase tracking-widest shrink-0" style={{ color: 'var(--text-tertiary)' }}>Task</span>
+            <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{task}</span>
           </div>
         </div>
       )}
 
       {/* Persona tabs */}
       {personas.length > 0 && (
-        <div className="border-b border-[#1a1a2e] bg-[#09090f] px-5">
+        <div className="px-5" style={{ borderBottom: '1px solid var(--border-primary)', background: 'var(--bg-primary)' }}>
           <div className="mx-auto max-w-6xl flex overflow-x-auto gap-1 py-1 scrollbar-hide">
             {personas.map((p) => (
               <button
@@ -373,10 +384,15 @@ export default function TestPage() {
                 onClick={() => setActiveTab(p.id)}
                 className={clsx(
                   'relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all shrink-0',
-                  activeTab === p.id
-                    ? 'bg-[#111120] text-white border border-[#2a2a42]'
-                    : 'text-[#555570] hover:text-[#ccccee] hover:bg-[#0d0d18]'
                 )}
+                style={activeTab === p.id ? {
+                  background: 'var(--bg-card)',
+                  color: 'var(--text-primary)',
+                  border: '1px solid var(--border-primary)',
+                } : {
+                  color: 'var(--text-tertiary)',
+                  border: '1px solid transparent',
+                }}
               >
                 <span className="text-base leading-none">{p.avatar}</span>
                 <span>{p.name.split(' ')[0]}</span>
@@ -401,7 +417,7 @@ export default function TestPage() {
         {status === 'connecting' && (
           <div className="flex flex-col items-center justify-center py-32 gap-4">
             <Loader2 size={28} className="text-purple-400 animate-spin" />
-            <p className="text-sm text-[#444460]">Connecting to test session…</p>
+            <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>Connecting to test session…</p>
           </div>
         )}
 
@@ -424,14 +440,14 @@ export default function TestPage() {
                       {pendingQuestion.personaName} is asking:
                     </span>
                   </div>
-                  <p className="text-sm text-white/80">&quot;{pendingQuestion.question}&quot;</p>
+                  <p className="text-sm" style={{ color: 'var(--text-primary)', opacity: 0.8 }}>&quot;{pendingQuestion.question}&quot;</p>
                   <div className="flex gap-2">
                     <input
                       type="text"
                       value={userResponse}
                       onChange={(e) => setUserResponse(e.target.value)}
                       placeholder="Type your response..."
-                      className="flex-1 rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:border-purple-500/50"
+                      className="input-phantom flex-1 text-sm"
                       onKeyDown={(e) => e.key === 'Enter' && handleRespond()}
                       autoFocus
                     />
@@ -464,9 +480,10 @@ export default function TestPage() {
 
               {/* Other personas summary */}
               {personas.length > 1 && (
-                <div className="rounded-xl border border-[#1e1e32] bg-[#0d0d18] overflow-hidden">
-                  <div className="px-4 py-2.5 border-b border-[#1a1a2e]">
-                    <p className="text-xs font-medium text-[#444460] uppercase tracking-wider">All personas</p>
+                <div className="rounded-xl overflow-hidden"
+                  style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)' }}>
+                  <div className="px-4 py-2.5" style={{ borderBottom: '1px solid var(--border-secondary)' }}>
+                    <p className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>All personas</p>
                   </div>
                   <div className="p-2 space-y-1">
                     {personas.map((p) => (
@@ -474,16 +491,19 @@ export default function TestPage() {
                         key={p.id}
                         onClick={() => setActiveTab(p.id)}
                         className={clsx(
-                          'w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 text-left',
+                          'w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 text-left border-l-2',
                           activeTab === p.id
-                            ? 'bg-[#111120] border-l-2 border-purple-500'
-                            : 'hover:bg-[#111120]/60 border-l-2 border-transparent'
+                            ? 'border-purple-500'
+                            : 'border-transparent'
                         )}
+                        style={{
+                          background: activeTab === p.id ? 'var(--bg-card-hover)' : 'transparent',
+                        }}
                       >
                         <span className="text-lg leading-none">{p.avatar}</span>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-[#ccccee] truncate">{p.name}</p>
-                          {p.step > 0 && <p className="text-[11px] text-[#444460]">step {p.step}</p>}
+                          <p className="text-xs font-medium truncate" style={{ color: 'var(--text-primary)' }}>{p.name}</p>
+                          {p.step > 0 && <p className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>step {p.step}</p>}
                         </div>
                         {statusDot(p.status)}
                         {p.status === 'done' && <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />}
@@ -503,28 +523,30 @@ export default function TestPage() {
             {/* Final screenshots row */}
             {personas.length > 0 && (
               <div>
-                <h2 className="text-xs font-semibold text-[#444460] uppercase tracking-wider mb-4">Final state per persona</h2>
+                <h2 className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: 'var(--text-tertiary)' }}>Final state per persona</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   {personas.map((p) => (
                     <button
                       key={p.id}
                       onClick={() => setActiveTab(p.id)}
                       className={clsx(
-                        'rounded-xl border overflow-hidden text-left transition-all hover:-translate-y-0.5',
-                        activeTab === p.id ? 'border-purple-500/50' : 'border-[#1e1e32]'
+                        'rounded-xl overflow-hidden text-left transition-all hover:-translate-y-0.5',
                       )}
+                      style={{
+                        border: activeTab === p.id ? '1px solid var(--accent-border)' : '1px solid var(--border-primary)',
+                      }}
                     >
                       {p.screenshot ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={`data:image/png;base64,${p.screenshot}`} alt={p.name} className="w-full aspect-video object-cover object-top" />
                       ) : (
-                        <div className="w-full aspect-video bg-[#0d0d18] flex items-center justify-center">
+                        <div className="w-full aspect-video flex items-center justify-center" style={{ background: 'var(--bg-card)' }}>
                           <span className="text-2xl">{p.avatar}</span>
                         </div>
                       )}
-                      <div className="px-3 py-2 bg-[#0d0d18] flex items-center gap-2">
+                      <div className="px-3 py-2 flex items-center gap-2" style={{ background: 'var(--bg-card)' }}>
                         <span className="text-sm">{p.avatar}</span>
-                        <span className="text-xs text-[#ccccee] flex-1 truncate">{p.name.split(' ')[0]}</span>
+                        <span className="text-xs flex-1 truncate" style={{ color: 'var(--text-primary)' }}>{p.name.split(' ')[0]}</span>
                         {p.status === 'done' ? <CheckCircle2 size={12} className="text-emerald-400" /> : <XCircle size={12} className="text-red-400" />}
                       </div>
                     </button>
