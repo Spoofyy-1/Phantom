@@ -28,8 +28,8 @@ export function SentimentTimeline({ personas }: SentimentTimelineProps) {
   const withEvents = personas.filter(p => (p.events ?? []).length > 0)
   if (withEvents.length === 0) return null
 
-  const maxSteps = Math.max(...withEvents.map(p => p.events.length))
-  if (maxSteps === 0) return null
+  const maxSteps = withEvents.length > 0 ? Math.max(...withEvents.map(p => p.events.length)) : 0
+  if (maxSteps <= 0) return null
 
   const svgWidth = 700
   const svgHeight = 260

@@ -325,7 +325,10 @@ async def run_persona_session(
             if action_type == "click":
                 eid = action.get("element_id")
                 if eid:
-                    coords = session._element_coords.get(int(eid))
+                    try:
+                        coords = session._element_coords.get(int(eid))
+                    except (ValueError, TypeError):
+                        coords = None
                     if coords:
                         click_points.append({
                             "x": coords[0],

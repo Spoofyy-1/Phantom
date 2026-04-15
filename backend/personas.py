@@ -8,6 +8,7 @@ so no vision needed here.
 
 import json
 import os
+import re
 from openai import AsyncOpenAI
 
 ARCHETYPES: list[dict] = [
@@ -397,8 +398,7 @@ Return ONLY the JSON, no markdown, no explanation."""
         raw = re.sub(r"\s*```$", "", raw)
     raw = raw.strip()
 
-    import re as _re
-    match = _re.search(r"\{[\s\S]*\}", raw)
+    match = re.search(r"\{[\s\S]*\}", raw)
     if match:
         raw = match.group()
 
