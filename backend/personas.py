@@ -345,15 +345,8 @@ def get_archetypes() -> list[dict]:
 def _get_text_client() -> tuple[AsyncOpenAI, str]:
     """
     Return (client, model) for text-only tasks (persona expansion).
-    Uses Kimi if KIMI_API_KEY is set — it's cheaper for text-only work.
-    Falls back to OpenAI gpt-4o-mini.
+    Uses OpenAI gpt-4o-mini.
     """
-    kimi_key = os.environ.get("KIMI_API_KEY")
-    if kimi_key:
-        return (
-            AsyncOpenAI(api_key=kimi_key, base_url="https://api.moonshot.cn/v1"),
-            "moonshot-v1-8k",
-        )
     return (
         AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"]),
         "gpt-4o-mini",
